@@ -1,0 +1,7 @@
+# config.py
+
+BOT_TOKEN = "7800594975:AAFz7imbaTGAYvf-WhKxgIxBxrgpKEiIsVo"
+ADMIN_ID = 585555633
+ALL_USERS_CHAT_IDS = [585555633]
+TIMEZONE = "Asia/Riyadh"
+USERS_DB_PATH = "users.json"
