@@ -34,7 +34,7 @@ def start_message(message):
 def admin_panel(message):
     if message.from_user.id == ADMIN_ID:
         bot.send_message(message.chat.id, "أهلاً بك في لوحة التحكم.")
-كل شيء يعمل بنجاح.")
+bot.send_message(message.chat.id, "كل شيء يعمل بنجاح.")
     else:
         bot.send_message(message.chat.id, "هذه اللوحة خاصة بالمشرف فقط.")
 
