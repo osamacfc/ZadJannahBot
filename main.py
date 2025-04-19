@@ -33,7 +33,7 @@ def start_message(message):
 @bot.message_handler(commands=['admin'])
 def admin_panel(message):
     if message.from_user.id == ADMIN_ID:
-        bot.send_message(message.chat.id, "أهلاً بك في لوحة التحكم.
+        bot.send_message(message.chat.id, "أهلاً بك في لوحة التحكم.")
 كل شيء يعمل بنجاح.")
     else:
         bot.send_message(message.chat.id, "هذه اللوحة خاصة بالمشرف فقط.")
