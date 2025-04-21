@@ -1,49 +1,73 @@
+# scheduler.py
+
 from apscheduler.schedulers.background import BackgroundScheduler
 from pytz import timezone
 from telegram import Bot
-from config import BOT_TOKEN, TIMEZONE, ALL_USERS_CHAT_IDS
-import datetime
+from config import BOT_TOKEN, ADMIN_ID, TIMEZONE, ALL_USERS_CHAT_IDS
+from datetime import datetime
+from main import (
+    send_morning_azkar,
+    send_evening_azkar,
+    # الدوال الأخرى تُضاف هنا لاحقًا مثل:
+    # send_duha_reminder,
+    # send_witr_reminder,
+    # send_midnight_istighfar,
+    # send_last_third_night,
+)
 
 bot = Bot(token=BOT_TOKEN)
 tz = timezone(TIMEZONE)
+
 scheduler = BackgroundScheduler(timezone=tz)
 
-# دالة إرسال للجميع
-def send_message_to_all(text):
+def send_message(text):
     for user_id in ALL_USERS_CHAT_IDS:
         try:
             bot.send_message(chat_id=user_id, text=text)
         except Exception as e:
-            print(f"خطأ أثناء الإرسال إلى {user_id}: {e}")
+            print(f"Error sending message to {user_id}: {e}")
 
-# المهام اليومية في الصباح
-def morning_tasks():
-    now = datetime.datetime.now(tz)
-    time_str = now.strftime("%I:%M %p")
-
-    send_message_to_all(f"☀️ صباح الخير!\nاذكر الله في هذا الصباح الجميل\n({time_str})")
-    send_message_to_all("✨ أذكار الصباح متاحة الآن. لا تفوّتها!")
-    send_message_to_all("❤️ دعاء للوالدين: اللهم ارحمهم كما ربّونا صغارًا.")
-    send_message_to_all("🌿 { سبحان الله وبحمده، سبحان الله العظيم }")
-
-# تذكير منتصف الليل بالاستغفار
-def midnight_istighfar():
-    send_message_to_all("🌙 منتصف الليل! لحظة استغفار وهدوء...\nاستغفر الله الذي لا إله إلا هو الحي القيوم وأتوب إليه.")
-
-# تذكير الثلث الأخير من الليل
-def last_third_of_night():
-    send_message_to_all("⭐ الآن الثلث الأخير من الليل...\nينزل ربنا إلى السماء الدنيا\nفأكثروا من الدعاء والاستغفار وصلاة الوتر.")
-
-# تفعيل المهام المجدولة
 def schedule_tasks():
-    # صباح الخير - الساعة 6:30 صباحًا
-    scheduler.add_job(morning_tasks, 'cron', hour=6, minute=30)
+    # أذكار الصباح (الساعة 6:00 صباحًا مؤقتًا)
+    scheduler.add_job(
+        lambda: [send_morning_azkar(uid) for uid in ALL_USERS_CHAT_IDS],
+        trigger='cron', hour=6, minute=0
+    )
 
-    # استغفار منتصف الليل - الساعة 12:30 صباحًا
-    scheduler.add_job(midnight_istighfar, 'cron', hour=0, minute=30)
+    # أذكار المساء (الساعة 17:30 مساءً مؤقتًا)
+    scheduler.add_job(
+        lambda: [send_evening_azkar(uid) for uid in ALL_USERS_CHAT_IDS],
+        trigger='cron', hour=17, minute=30
+    )
 
-    # الثلث الأخير من الليل (مثال: الساعة 3:45 صباحًا)
-    scheduler.add_job(last_third_of_night, 'cron', hour=3, minute=45)
+    # صلاة الضحى (الساعة 9:00 صباحًا)
+    scheduler.add_job(
+        lambda: send_message("☀️ لا تنسَ صلاة الضحى! أقلها ركعتان، وأكثرها 8. أفضل وقتها بعد شروق الشمس بثلث ساعة."),
+        trigger='cron', hour=9, minute=0
+    )
+
+    # تذكير الوتر (الساعة 11:45 مساءً)
+    scheduler.add_job(
+        lambda: send_message("🌙 لا تنسَ صلاة الوتر – ختام صلاتك ليلًا. عدد ركعاتها فردي."),
+        trigger='cron', hour=23, minute=45
+    )
+
+    # استغفار منتصف الليل (12:30 صباحًا)
+    scheduler.add_job(
+        lambda: send_message("🕧 استغفر الله الذي لا إله إلا هو الحي القيوم وأتوب إليه."),
+        trigger='cron', hour=0, minute=30
+    )
+
+    # تذكير الثلث الأخير من الليل (الساعة 2:30 صباحًا)
+    scheduler.add_job(
+        lambda: send_message("🌌 الثلث الأخير من الليل الآن – وقت نزول الرب، فاذكر الله واستغفر وادعُ."),
+        trigger='cron', hour=2, minute=30
+    )
+
+    # قيام الليل (فجر الخميس فقط)
+    scheduler.add_job(
+        lambda: send_message("✨ هل اجتهدت في قيام الليل؟ ليلة الخميس من الليالي المباركة."),
+        trigger='cron', day_of_week='thu', hour=4, minute=45
+    )
 
     scheduler.start()
-    print("تم تشغيل المجدول اليومي – ZadJannahBot")
