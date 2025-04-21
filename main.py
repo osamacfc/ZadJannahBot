@@ -41,15 +41,14 @@ def start_message(message):
     register_user(message.chat.id)
     bot.send_message(
         message.chat.id,
-        f"مرحبًا {message.from_user.first_name}!
-"
-        "أنا ZadJannahBot – زادك إلى الجنة بإذن الله.
+      bot.send_message(
+    message.chat.id,
+    f"""مرحبًا {message.from_user.first_name}!
+أنا ZadJannahBot – زادك إلى الجنة بإذن الله.
 
-"
-        "ابدأ رحلتك اليومية مع الأذكار والصلاة والدعاء.
-"
-        "سنذكرك دائمًا بكل خير!"
-    )
+ابدأ رحلتك اليومية مع الأذكار والصلاة والدعاء.
+سنذكرك دائمًا بكل خير!"""
+)
 
 # /myinfo
 @bot.message_handler(commands=['myinfo'])
