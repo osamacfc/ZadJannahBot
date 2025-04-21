@@ -31,7 +31,6 @@ def register_user(user_id):
         with open(USERS_DB_PATH, "w") as f:
             json.dump(users, f, ensure_ascii=False, indent=2)
 
-    # تحديث ALL_USERS_CHAT_IDS من قاعدة البيانات
     global ALL_USERS_CHAT_IDS
     ALL_USERS_CHAT_IDS = [u["id"] if isinstance(u, dict) else u for u in users]
 
@@ -41,14 +40,12 @@ def start_message(message):
     register_user(message.chat.id)
     bot.send_message(
         message.chat.id,
-      bot.send_message(
-    message.chat.id,
-    f"""مرحبًا {message.from_user.first_name}!
+        f"""مرحبًا {message.from_user.first_name}!
 أنا ZadJannahBot – زادك إلى الجنة بإذن الله.
 
 ابدأ رحلتك اليومية مع الأذكار والصلاة والدعاء.
 سنذكرك دائمًا بكل خير!"""
-)
+    )
 
 # /myinfo
 @bot.message_handler(commands=['myinfo'])
@@ -102,14 +99,10 @@ def send_daily_good_deed(message=None):
         types.InlineKeyboardButton("ذكرني بها لاحقًا 🔔", callback_data="remind_later")
     )
     if message:
-        bot.send_message(message.chat.id, f"✨ *فعل اليوم:*
-
-{deed}", parse_mode="Markdown", reply_markup=markup)
+        bot.send_message(message.chat.id, f"✨ *فعل اليوم:*\n\n{deed}", parse_mode="Markdown", reply_markup=markup)
     else:
         for user_id in ALL_USERS_CHAT_IDS:
-            bot.send_message(user_id, f"✨ *فعل اليوم:*
-
-{deed}", parse_mode="Markdown", reply_markup=markup)
+            bot.send_message(user_id, f"✨ *فعل اليوم:*\n\n{deed}", parse_mode="Markdown", reply_markup=markup)
 
 # أذكار الصباح
 def send_morning_azkar(user_id):
@@ -151,11 +144,10 @@ def handle_azkar_buttons(call):
     }
     bot.send_message(call.message.chat.id, azkar_data[call.data])
 
+# استدعاء المجدول
 from scheduler import schedule_tasks
 schedule_tasks()
 
+# رسالة تشغيل البوت
 print("البوت جاهز. انتظر بدء polling ...")
 bot.infinity_polling()
-
-# (تنبيهات أخرى، عداد الذكر، أذكار الصباح/المساء، دعاء الوالدين، وِتر، الضحى، استغفار منتصف الليل، الثلث الأخير، وغيرها)
-# ستُدرج هنا كل الدوال والأزرار والجدولة النهائية...
