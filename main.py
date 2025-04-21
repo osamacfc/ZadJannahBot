@@ -16,17 +16,24 @@ def register_user(user_id):
     except:
         users = []
 
-    if user_id not in users:
-        users.append({
+    existing_ids = [u["id"] if isinstance(u, dict) else u for u in users]
+
+    if user_id not in existing_ids:
+        new_user = {
             "id": user_id,
             "city": "غير محددة",
             "dhikr_count": 0,
             "witr": 0,
             "duha_days": 0,
             "last_dua": ""
-        })
+        }
+        users.append(new_user)
         with open(USERS_DB_PATH, "w") as f:
-            json.dump(users, f)
+            json.dump(users, f, ensure_ascii=False, indent=2)
+
+    # تحديث ALL_USERS_CHAT_IDS من قاعدة البيانات
+    global ALL_USERS_CHAT_IDS
+    ALL_USERS_CHAT_IDS = [u["id"] if isinstance(u, dict) else u for u in users]
 
 # /start
 @bot.message_handler(commands=['start'])
