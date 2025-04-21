@@ -138,7 +138,20 @@ def handle_applied_deed(call):
 @bot.callback_query_handler(func=lambda call: call.data == "remind_later")
 def remind_later(call):
     bot.send_message(call.message.chat.id, "تمام! سأذكّرك بها لاحقًا إن شاء الله.")
-    
+
+@bot.callback_query_handler(func=lambda call: call.data in [
+    "azkar_morning_short", "azkar_morning_full",
+    "azkar_evening_short", "azkar_evening_full"
+])
+def handle_azkar_buttons(call):
+    azkar_data = {
+        "azkar_morning_short": "☀️ أذكار الصباح المختصرة:\n- أصبحنا وأصبح الملك لله...\n- الحمد لله...",
+        "azkar_morning_full": "☀️ أذكار الصباح الكاملة:\n- آية الكرسي\n- المعوذات\n- لا إله إلا الله وحده لا شريك له...",
+        "azkar_evening_short": "🌙 أذكار المساء المختصرة:\n- أمسينا وأمسى الملك لله...\n- الحمد لله...",
+        "azkar_evening_full": "🌙 أذكار المساء الكاملة:\n- آية الكرسي\n- المعوذات\n- بسم الله الذي لا يضر مع اسمه شيء..."
+    }
+    bot.send_message(call.message.chat.id, azkar_data[call.data])
+
 from scheduler import schedule_tasks
 schedule_tasks()
 
