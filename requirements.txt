@@ -1,3 +1,1 @@
-python-telegram-bot==13.15
-apscheduler
-pytz
+pyTelegramBotAPI==4.12.0
