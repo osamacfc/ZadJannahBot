@@ -1,4 +1,4 @@
-# scheduler.py
+# === scheduler.py ===
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from pytz import timezone
@@ -8,16 +8,10 @@ from datetime import datetime
 from main import (
     send_morning_azkar,
     send_evening_azkar,
-    # الدوال الأخرى تُضاف هنا لاحقًا مثل:
-    # send_duha_reminder,
-    # send_witr_reminder,
-    # send_midnight_istighfar,
-    # send_last_third_night,
 )
 
 bot = Bot(token=BOT_TOKEN)
 tz = timezone(TIMEZONE)
-
 scheduler = BackgroundScheduler(timezone=tz)
 
 def send_message(text):
@@ -28,13 +22,13 @@ def send_message(text):
             print(f"Error sending message to {user_id}: {e}")
 
 def schedule_tasks():
-    # أذكار الصباح (الساعة 6:00 صباحًا مؤقتًا)
+    # أذكار الصباح (الساعة 6:00 صباحًا)
     scheduler.add_job(
         lambda: [send_morning_azkar(uid) for uid in ALL_USERS_CHAT_IDS],
         trigger='cron', hour=6, minute=0
     )
 
-    # أذكار المساء (الساعة 17:30 مساءً مؤقتًا)
+    # أذكار المساء (الساعة 17:30 مساءً)
     scheduler.add_job(
         lambda: [send_evening_azkar(uid) for uid in ALL_USERS_CHAT_IDS],
         trigger='cron', hour=17, minute=30
@@ -58,7 +52,7 @@ def schedule_tasks():
         trigger='cron', hour=0, minute=30
     )
 
-    # تذكير الثلث الأخير من الليل (الساعة 2:30 صباحًا)
+    # الثلث الأخير من الليل (2:30 صباحًا)
     scheduler.add_job(
         lambda: send_message("🌌 الثلث الأخير من الليل الآن – وقت نزول الرب، فاذكر الله واستغفر وادعُ."),
         trigger='cron', hour=2, minute=30
