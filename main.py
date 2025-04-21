@@ -112,6 +112,24 @@ def send_daily_good_deed(message=None):
 
 {deed}", parse_mode="Markdown", reply_markup=markup)
 
+# أذكار الصباح
+def send_morning_azkar(user_id):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("أذكار مختصرة", callback_data="azkar_morning_short"),
+        types.InlineKeyboardButton("أذكار كاملة", callback_data="azkar_morning_full")
+    )
+    bot.send_message(user_id, "☀️ *أذكار الصباح*\nاختر النسخة التي تفضلها:", parse_mode="Markdown", reply_markup=markup)
+
+# أذكار المساء
+def send_evening_azkar(user_id):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("أذكار مختصرة", callback_data="azkar_evening_short"),
+        types.InlineKeyboardButton("أذكار كاملة", callback_data="azkar_evening_full")
+    )
+    bot.send_message(user_id, "🌙 *أذكار المساء*\nاختر النسخة التي تفضلها:", parse_mode="Markdown", reply_markup=markup)
+
 # أزرار التفاعل
 @bot.callback_query_handler(func=lambda call: call.data == "applied_deed")
 def handle_applied_deed(call):
@@ -120,10 +138,12 @@ def handle_applied_deed(call):
 @bot.callback_query_handler(func=lambda call: call.data == "remind_later")
 def remind_later(call):
     bot.send_message(call.message.chat.id, "تمام! سأذكّرك بها لاحقًا إن شاء الله.")
+    
+from scheduler import schedule_tasks
+schedule_tasks()
 
 print("البوت جاهز. انتظر بدء polling ...")
 bot.infinity_polling()
-
 
 # (تنبيهات أخرى، عداد الذكر، أذكار الصباح/المساء، دعاء الوالدين، وِتر، الضحى، استغفار منتصف الليل، الثلث الأخير، وغيرها)
 # ستُدرج هنا كل الدوال والأزرار والجدولة النهائية...
