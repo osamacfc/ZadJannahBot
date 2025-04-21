@@ -1,37 +1,23 @@
+# main.py
 
-import telebot
-from telebot import types
+from scheduler import schedule_tasks
+from handlers import setup_handlers
+from telegram.ext import Updater
+from config import BOT_TOKEN
 
-# ضع هنا توكن البوت الخاص بك من BotFather
-TOKEN = "YOUR_BOT_TOKEN_HERE"
-bot = telebot.TeleBot(TOKEN)
+def main():
+    updater = Updater(BOT_TOKEN, use_context=True)
+    dp = updater.dispatcher
 
-# معرف المسؤول (استبدله بمعرفك الشخصي)
-ADMIN_ID = 123456789
+    # إعداد الأوامر والردود
+    setup_handlers(dp)
 
-# رسالة الترحيب عند بدء البوت
-@bot.message_handler(commands=['start'])
-def start_message(message):
-    bot.send_message(
-        message.chat.id,
-        "مرحبًا بك في ZadJannahBot!\nجعله الله زادًا لك إلى الجنة.\n\n"
-        "ابدأ رحلتك مع الذكر من خلال القائمة، أو انتظر رسائلك اليومية تلقائيًا."
-    )
+    # جدولة الرسائل التلقائية
+    schedule_tasks(updater)
 
-# لوحة التحكم للمسؤول
-@bot.message_handler(commands=['admin'])
-def admin_panel(message):
-    if message.from_user.id != ADMIN_ID:
-        bot.reply_to(message, "هذه اللوحة خاصة بالمشرف.")
-        return
+    # بدء تشغيل البوت
+    updater.start_polling()
+    updater.idle()
 
-    bot.send_message(
-        message.chat.id,
-        "لوحة تحكم ZadJannahBot\n\n"
-        "• عدد المستخدمين: قيد التفعيل\n"
-        "• آخر التفاعلات: قريبًا\n"
-        "• أوامر قيد التطوير..."
-    )
-
-# تشغيل البوت بشكل دائم
-bot.polling(none_stop=True)
+if __name__ == "__main__":
+    main()
