@@ -334,12 +334,17 @@ def send_full_sleep_azkar(user_id):
 📚 *المصدر:* حصن المسلم – الأذكار النبوية
 """
     bot.send_message(user_id, text, parse_mode="Markdown")
-    @bot.message_handler(commands=['sleep'])
+@bot.message_handler(commands=['sleep'])
 def show_sleep_azkar(message):
     markup = types.InlineKeyboardMarkup()
     markup.add(
         types.InlineKeyboardButton("🛌 أذكار النوم (مختصرة)", callback_data="sleep_short"),
         types.InlineKeyboardButton("🛌 أذكار النوم (كاملة)", callback_data="sleep_full")
+    )
+    bot.send_message(
+        message.chat.id,
+        "اختر نوع أذكار النوم التي تريد عرضها:",
+        reply_markup=markup
     )
     bot.send_message(message.chat.id, "اختر نوع الأذكار:", reply_markup=markup)
     @bot.callback_query_handler(func=lambda call: call.data == "sleep_short")
