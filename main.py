@@ -64,7 +64,7 @@ bot.set_my_commands([
     types.BotCommand("next_salah", "الصلاة القادمة"),
     types.BotCommand("myinfo", "ملفك الشخصي"),
     types.BotCommand("support", "الدعم والإعدادات"),
-    types.BotCommand("get_prayer_times", "عرض أوقات الصلاة")  # إضافة أمر أوقات الصلاة
+    types.BotCommand("get_prayer_times", "أوقات الصلاة بناءً على مدينتك")  # إضافة أمر للحصول على أوقات الصلاة
 ])
 
 # دالة استعلام أوقات الصلاة
