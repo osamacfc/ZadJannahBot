@@ -432,15 +432,22 @@ def send_parents_dua(user_id):
         "اللهم اجعل دعائي لوالديّ سببًا في رفع منزلتهم، وزدهم من الحسنات."
     ]
     
-    for dua in duas:
-        bot.send_message(user_id, dua)
-    selected = random.choice(duas)
-    bot.send_message(user_id, f"❤️ *دعاء للوالدين:*\n\n{selected}", parse_mode="Markdown")
-    @bot.message_handler(commands=['parents'])
+for dua in duas:
+    bot.send_message(user_id, dua)
+
+selected = random.choice(duas)
+bot.send_message(user_id, f"❤️ *دعاء للوالدين:*\n\n{selected}", parse_mode="Markdown")
+
+@bot.message_handler(commands=['parents'])
 def show_parents_dua_button(message):
     markup = types.InlineKeyboardMarkup()
     markup.add(
         types.InlineKeyboardButton("دعاء جديد للوالدين", callback_data="parents_dua")
+    )
+    bot.send_message(
+        message.chat.id,
+        "اختر دعاء جديد للوالدين:",
+        reply_markup=markup
     )
     bot.send_message(message.chat.id, "اضغط الزر للحصول على دعاء متجدد للوالدين:", reply_markup=markup)
     @bot.callback_query_handler(func=lambda call: call.data == "parents_dua")
