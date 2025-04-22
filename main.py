@@ -347,7 +347,8 @@ def show_sleep_azkar(message):
         reply_markup=markup
     )
     bot.send_message(message.chat.id, "اختر نوع الأذكار:", reply_markup=markup)
-    @bot.callback_query_handler(func=lambda call: call.data == "sleep_short")
+
+@bot.callback_query_handler(func=lambda call: call.data == "sleep_short")
 def handle_sleep_short(call):
     send_short_sleep_azkar(call.message.chat.id)
 
