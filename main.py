@@ -139,7 +139,7 @@ short_morning_azkar = """1. *آية الكرسي:*
 رضيت بالله ربًّا، وبالإسلام دينًا، وبمحمد ﷺ نبيًّا. (ثلاث مرات)
 
 📚 *المصدر:* حصن المسلم – النصوص الكاملة."""
-    def send_short_morning_azkar(user_id):
+def send_short_morning_azkar(user_id):
     short_morning_azkar = """..."""  # الأذكار هنا
     bot.send_message(user_id, short_morning_azkar, parse_mode="Markdown")
 
