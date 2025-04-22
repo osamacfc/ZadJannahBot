@@ -63,8 +63,28 @@ bot.set_my_commands([
     types.BotCommand("khatmah", "جزء اليوم من القرآن"),
     types.BotCommand("next_salah", "الصلاة القادمة"),
     types.BotCommand("myinfo", "ملفك الشخصي"),
-    types.BotCommand("support", "الدعم والإعدادات")
+    types.BotCommand("support", "الدعم والإعدادات"),
+    types.BotCommand("get_prayer_times", "عرض أوقات الصلاة")  # إضافة أمر أوقات الصلاة
 ])
+
+# دالة استعلام أوقات الصلاة
+@bot.message_handler(commands=["get_prayer_times"])
+def send_prayer_times(message):
+    city = "مكة"  # هذه المدينة يمكن أن تأتي من إدخال المستخدم
+    prayer_times = get_prayer_times(city)
+    
+    if prayer_times:
+        response_text = f"مرحبًا {message.from_user.first_name}!\n\n"
+        response_text += f"بناءً على موقعك في {city}، هذه هي أوقات الصلاة:\n"
+        response_text += f"- الفجر: {prayer_times['Fajr']}\n"
+        response_text += f"- الظهر: {prayer_times['Dhuhr']}\n"
+        response_text += f"- العصر: {prayer_times['Asr']}\n"
+        response_text += f"- المغرب: {prayer_times['Maghrib']}\n"
+        response_text += f"- العشاء: {prayer_times['Isha']}\n"
+        response_text += "نتمنى لك يومًا مباركًا!"
+        bot.send_message(message.chat.id, response_text)
+    else:
+        bot.send_message(message.chat.id, "عذرًا، لم نتمكن من العثور على أوقات الصلاة للمدينة.")
 # دالة عرض أذكار الصباح المختصرة
 @bot.message_handler(commands=['azkar'])
 def show_azkar_options(message):
@@ -558,7 +578,8 @@ def share_reward(message):
 📚 *المصدر:* الحديث النبوي الصحيح.
     """
     bot.send_message(user_id, witr_dua, parse_mode="Markdown")
-     @bot.message_handler(commands=['witr'])
+
+@bot.message_handler(commands=['witr'])
 def send_witr_message(message):
     markup = types.InlineKeyboardMarkup()
     markup.add(
@@ -570,7 +591,8 @@ def send_witr_message(message):
         "أضف دعاء الوتر الآن!",
         reply_markup=markup
     )
+
 @bot.callback_query_handler(func=lambda call: call.data == "witr_dua")
 def handle_witr_dua(call):
     send_witr_dua(call.message.chat.id)
-
+    
