@@ -463,11 +463,7 @@ def send_family_dua(user_id, category):
             "اللهم احفظهم من كل سوء، ووفقهم لما تحب وترضى.",
             "اللهم نوّر دربهم، ووسع رزقهم، وبارك في أعمارهم.",
             "اللهم اجعلهم من أهل القرآن وأهل الصلاح."
-        ]
-    }
-
-for dua in family_duas.get(category, []):
-    bot.send_message(user_id, dua)
+        ],
         "spouse": [
             "اللهم اجعلني قرة عين لزوجي/زوجتي، واجعله/اجعلها قرة عين لي.",
             "اللهم اجعل بيني وبين زوجي/زوجتي مودة ورحمة وسكينة.",
@@ -484,11 +480,14 @@ for dua in family_duas.get(category, []):
             "اللهم ارزقنا رضاك والجنة، واجعلنا من الشاكرين."
         ]
     }
+
     dua_list = family_duas.get(category, [])
     if dua_list:
         selected = random.choice(dua_list)
         bot.send_message(user_id, f"📿 *دعاء العائلة:*\n\n{selected}", parse_mode="Markdown")
-        @bot.message_handler(commands=['family'])
+
+
+@bot.message_handler(commands=['family'])
 def show_family_dua_menu(message):
     markup = types.InlineKeyboardMarkup()
     markup.add(
@@ -500,11 +499,15 @@ def show_family_dua_menu(message):
         types.InlineKeyboardButton("دعاء للعائلة", callback_data="family_family")
     )
     bot.send_message(message.chat.id, "اختر نوع الدعاء الذي تريده:", reply_markup=markup)
-   @bot.callback_query_handler(func=lambda call: call.data.startswith("family_"))
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("family_"))
 def handle_family_dua(call):
     category = call.data.replace("family_", "")
     send_family_dua(call.message.chat.id, category)
-    def send_kids_protection_dua(user_id):
+
+
+def send_kids_protection_dua(user_id):
     dua_text = """
 👶 *دعاء الاستعاذة للأطفال:*
 
@@ -516,10 +519,14 @@ def handle_family_dua(call):
 📘 *المصدر:* صحيح البخاري (3120)
 """
     bot.send_message(user_id, dua_text, parse_mode="Markdown")
-    @bot.message_handler(commands=['kids_dua'])
+
+
+@bot.message_handler(commands=['kids_dua'])
 def show_kids_dua(message):
     send_kids_protection_dua(message.chat.id)
-    # دعاء الاستعاذة بالأبناء – صباحًا (7:30)
+
+
+# دعاء الاستعاذة بالأبناء – صباحًا (7:30)
 scheduler.add_job(
     lambda: [send_kids_protection_dua(uid) for uid in ALL_USERS_CHAT_IDS],
     trigger='cron', hour=7, minute=30
@@ -530,6 +537,8 @@ scheduler.add_job(
     lambda: [send_kids_protection_dua(uid) for uid in ALL_USERS_CHAT_IDS],
     trigger='cron', hour=17, minute=15
 )
+
+
 @bot.message_handler(commands=['dhikr'])
 def show_dhikr_counter_options(message):
     markup = types.InlineKeyboardMarkup()
@@ -540,8 +549,11 @@ def show_dhikr_counter_options(message):
         types.InlineKeyboardButton("100 مرة", callback_data="dhikr_100")
     )
     bot.send_message(message.chat.id, "اختر عدد التكرارات للذكر:", reply_markup=markup)
-    # حفظ حالات المستخدمين مؤقتًا (في الذاكرة فقط)
+
+
 user_dhikr_state = {}
+
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith("dhikr_"))
 def start_dhikr_tracking(call):
     count = int(call.data.replace("dhikr_", ""))
@@ -550,7 +562,9 @@ def start_dhikr_tracking(call):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("اذكر الآن", callback_data="dhikr_click"))
     bot.send_message(call.message.chat.id, f"اذكر الآن – {count} مرة\n\nاضغط على الزر مع كل تسبيحة.", reply_markup=markup)
-    @bot.callback_query_handler(func=lambda call: call.data == "dhikr_click")
+
+
+@bot.callback_query_handler(func=lambda call: call.data == "dhikr_click")
 def handle_dhikr_click(call):
     user_id = call.from_user.id
     if user_id in user_dhikr_state:
@@ -565,7 +579,9 @@ def handle_dhikr_click(call):
             bot.answer_callback_query(call.id, text=f"عدّد الذكر: {state['current']} / {state['target']}")
     else:
         bot.answer_callback_query(call.id, text="ابدأ من /dhikr لاختيار العدد.")
-       random_duas = [
+
+
+random_duas = [
     "اللهم أعني على ذكرك وشكرك وحسن عبادتك.",
     "اللهم ارزقني رزقًا طيبًا واسعًا مباركًا.",
     "اللهم فرّج همّي ويسّر أمري واشرح صدري.",
@@ -577,16 +593,15 @@ def handle_dhikr_click(call):
     "اللهم يا مُقلّب القلوب ثبّت قلبي على دينك.",
     "اللهم إنك عفوٌ تحب العفو فاعفُ عني."
 ]
+
+
 @bot.message_handler(commands=['dua'])
 def send_random_dua(message):
     dua = random.choice(random_duas)
     bot.send_message(message.chat.id, f"📿 *دعاء اليوم:*\n\n{dua}", parse_mode="Markdown")
-    bot.set_my_commands([
-    # ...
-    types.BotCommand("dua", "دعاء عشوائي يومي"),
-    # ...
-])
-   @bot.message_handler(commands=['share'])
+
+
+@bot.message_handler(commands=['share'])
 def share_reward(message):
     bot.send_message(
         message.chat.id,
@@ -596,22 +611,20 @@ def share_reward(message):
         "كل من استفاد بسببك، فلك مثل أجره بإذن الله.",
         parse_mode="Markdown"
     )
-    bot.set_my_commands([
-    # ...
-    types.BotCommand("share", "شارك الأجر مع غيرك"),
-    # ...
-])
-  def send_witr_dua(user_id):
+
+
+def send_witr_dua(user_id):
     witr_dua = """
 🌙 *دعاء الوتر*:
 
 اللهم إنا نرغب إليك في دعاء الوتر:
-  
+
 اللهم إني أعوذ برضاك من سخطك، وبمعافاتك من عقوبتك، وأعوذ بك منك، لا نحصي ثناءً عليك، أنت كما أثنيت على نفسك.
 
 📚 *المصدر:* الحديث النبوي الصحيح.
     """
     bot.send_message(user_id, witr_dua, parse_mode="Markdown")
+
 
 @bot.message_handler(commands=['witr'])
 def send_witr_message(message):
@@ -620,13 +633,13 @@ def send_witr_message(message):
         types.InlineKeyboardButton("دعاء الوتر", callback_data="witr_dua")
     )
     bot.send_message(
-        message.chat.id, 
+        message.chat.id,
         "🌙 *صلاة الوتر* – ختام صلاتك ليلًا.\n\n"
         "أضف دعاء الوتر الآن!",
         reply_markup=markup
     )
 
+
 @bot.callback_query_handler(func=lambda call: call.data == "witr_dua")
 def handle_witr_dua(call):
     send_witr_dua(call.message.chat.id)
-    
