@@ -449,18 +449,25 @@ def show_parents_dua_button(message):
         "اختر دعاء جديد للوالدين:",
         reply_markup=markup
     )
-    bot.send_message(message.chat.id, "اضغط الزر للحصول على دعاء متجدد للوالدين:", reply_markup=markup)
-    @bot.callback_query_handler(func=lambda call: call.data == "parents_dua")
+bot.send_message(message.chat.id, "اضغط الزر للحصول على دعاء متجدد للوالدين:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == "parents_dua")
 def handle_parents_dua(call):
     send_parents_dua(call.message.chat.id)
-    def send_family_dua(user_id, category):
+
+def send_family_dua(user_id, category):
     family_duas = {
         "kids": [
-            "اللهم اجعل أبنائي هداة مهتدين، لا ضالين ولا مضلين.",
-            "اللهم ارزق أبنائي حبك وحب نبيك، والعمل بما يُرضيك.",
-            "اللهم بارك في أعمارهم، وحقق أحلامهم، واحفظهم من كل سوء.",
-            "اللهم اجعلهم من الصالحين، وقرّة عين لي ولوالدهم/والدتهم."
-        ],
+            "اللهم اجعلهم هداةً مهتدين، لا ضالين ولا مضلين.",
+            "اللهم ارزقهم حبك وحب نبيك، والعمل بما يُرضيك.",
+            "اللهم احفظهم من كل سوء، ووفقهم لما تحب وترضى.",
+            "اللهم نوّر دربهم، ووسع رزقهم، وبارك في أعمارهم.",
+            "اللهم اجعلهم من أهل القرآن وأهل الصلاح."
+        ]
+    }
+
+for dua in family_duas.get(category, []):
+    bot.send_message(user_id, dua)
         "spouse": [
             "اللهم اجعلني قرة عين لزوجي/زوجتي، واجعله/اجعلها قرة عين لي.",
             "اللهم اجعل بيني وبين زوجي/زوجتي مودة ورحمة وسكينة.",
