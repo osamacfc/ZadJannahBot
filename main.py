@@ -418,8 +418,8 @@ def send_parents_dua(user_id):
         "اللهم اجعل قبورهم روضة من رياض الجنة.",
         # تابع بقية الأدعية هنا...
     ]
-    for dua in duas:
-        bot.send_message(user_id, dua)
+    def send_parents_dua(user_id):
+    duas = [
         "اللهم ارحم والدَيّ كما ربياني صغيرًا.",
         "اللهم اغفر لوالديّ، وارفع درجتهما في المهديين.",
         "اللهم اجعل قبريهما روضة من رياض الجنة.",
@@ -431,6 +431,9 @@ def send_parents_dua(user_id):
         "اللهم اجمعني بهما في الفردوس الأعلى بغير حساب ولا عذاب.",
         "اللهم اجعل دعائي لوالديّ سببًا في رفع منزلتهم، وزدهم من الحسنات."
     ]
+    
+    for dua in duas:
+        bot.send_message(user_id, dua)
     selected = random.choice(duas)
     bot.send_message(user_id, f"❤️ *دعاء للوالدين:*\n\n{selected}", parse_mode="Markdown")
     @bot.message_handler(commands=['parents'])
