@@ -393,13 +393,15 @@ def send_full_salat_azkar(user_id):
 📚 *المصدر:* حصن المسلم – الصيغة الكاملة بعد كل صلاة
 """
     bot.send_message(user_id, text, parse_mode="Markdown")
-    @bot.message_handler(commands=['salat_azkar'])
+
+@bot.message_handler(commands=['salat_azkar'])
 def show_salat_azkar(message):
     markup = types.InlineKeyboardMarkup()
     markup.add(
         types.InlineKeyboardButton("🕌 أذكار الصلاة (مختصرة)", callback_data="salat_short"),
         types.InlineKeyboardButton("🕌 أذكار الصلاة (كاملة)", callback_data="salat_full")
     )
+    bot.send_message(message.chat.id, "اختر نوع أذكار الصلاة:", reply_markup=markup)
     bot.send_message(message.chat.id, "اختر نوع الأذكار:", reply_markup=markup)
     @bot.callback_query_handler(func=lambda call: call.data == "salat_short")
 def handle_salat_short(call):
