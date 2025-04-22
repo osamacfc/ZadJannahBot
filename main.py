@@ -403,15 +403,23 @@ def show_salat_azkar(message):
     )
     bot.send_message(message.chat.id, "اختر نوع أذكار الصلاة:", reply_markup=markup)
     bot.send_message(message.chat.id, "اختر نوع الأذكار:", reply_markup=markup)
-    @bot.callback_query_handler(func=lambda call: call.data == "salat_short")
+@bot.callback_query_handler(func=lambda call: call.data == "salat_short")
 def handle_salat_short(call):
     send_short_salat_azkar(call.message.chat.id)
 
 @bot.callback_query_handler(func=lambda call: call.data == "salat_full")
 def handle_salat_full(call):
     send_full_salat_azkar(call.message.chat.id)
-    def send_parents_dua(user_id):
+
+# الآن دالة دعاء الوالدين، تبدأ بشكل مستقل تمامًا:
+def send_parents_dua(user_id):
     duas = [
+        "اللهم ارحم والدَيّ كما ربياني صغيرًا.",
+        "اللهم اجعل قبورهم روضة من رياض الجنة.",
+        # تابع بقية الأدعية هنا...
+    ]
+    for dua in duas:
+        bot.send_message(user_id, dua)
         "اللهم ارحم والدَيّ كما ربياني صغيرًا.",
         "اللهم اغفر لوالديّ، وارفع درجتهما في المهديين.",
         "اللهم اجعل قبريهما روضة من رياض الجنة.",
