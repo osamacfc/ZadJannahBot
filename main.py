@@ -66,10 +66,36 @@ bot.set_my_commands([
     types.BotCommand("support", "الدعم والإعدادات")
 ])
 # دالة عرض أذكار الصباح المختصرة
-def send_short_morning_azkar(user_id):
-    short_morning_azkar = """
-☀️ *أذكار الصباح – مختصرة:*
+@bot.message_handler(commands=['azkar'])
+def show_azkar_options(message):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("☀️ أذكار الصباح (مختصرة)", callback_data="azkar_morning_short"),
+        types.InlineKeyboardButton("☀️ أذكار الصباح (كاملة)", callback_data="azkar_morning_full"),
+    )
+    markup.add(
+        types.InlineKeyboardButton("🌙 أذكار المساء (مختصرة)", callback_data="azkar_evening_short"),
+        types.InlineKeyboardButton("🌙 أذكار المساء (كاملة)", callback_data="azkar_evening_full")
+    )
+    bot.send_message(message.chat.id, "اختر نوع الأذكار:", reply_markup=markup)
+@bot.callback_query_handler(func=lambda call: call.data == "azkar_morning_short")
+def handle_short_morning(call):
+    send_short_morning_azkar(call.message.chat.id)
 
+@bot.callback_query_handler(func=lambda call: call.data == "azkar_morning_full")
+def handle_full_morning(call):
+    send_full_morning_azkar(call.message.chat.id)
+
+@bot.callback_query_handler(func=lambda call: call.data == "azkar_evening_short")
+def handle_short_evening(call):
+    send_short_evening_azkar(call.message.chat.id)
+
+@bot.callback_query_handler(func=lambda call: call.data == "azkar_evening_full")
+def handle_full_evening(call):
+    send_full_evening_azkar(call.message.chat.id)
+def send_short_morning_azkar(user_id):
+    short_morning_azkar = """☀️ *أذكار الصباح – مختصرة:* ... """
+    bot.send_message(user_id, short_morning_azkar, parse_mode="Markdown")
 1. *آية الكرسي:*  
 اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ، لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ، لَهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ... [البقرة: 255]
 
@@ -241,4 +267,310 @@ def send_full_evening_azkar(user_id):
 @bot.callback_query_handler(func=lambda call: call.data == "azkar_evening_full")
 def handle_full_evening_azkar(call):
     send_full_evening_azkar(call.message.chat.id)
+# دوال أذكار النوم
+def send_short_sleep_azkar(user_id):
+    text = """
+🛌 *أذكار النوم – مختصرة:*
+
+1. *باسمك ربي وضعت جنبي وبك أرفعه، إن أمسكت نفسي فارحمها وإن أرسلتها فاحفظها.*
+
+2. *اللهم باسمك أموت وأحيا.*
+
+3. *اللهم قني عذابك يوم تبعث عبادك.*
+
+4. *اللهم أسلمت نفسي إليك، وفوضت أمري إليك، وألجأت ظهري إليك...*
+
+📚 *المصدر:* حصن المسلم
+"""
+    bot.send_message(user_id, text, parse_mode="Markdown")
+
+
+def send_full_sleep_azkar(user_id):
+    text = """
+🛌 *أذكار النوم – كاملة:*
+
+1. *آية الكرسي* – [البقرة: 255]  
+اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ...
+
+2. *الإخلاص – الفلق – الناس* (مرة واحدة لكل سورة)
+
+3. *آخر آيتين من سورة البقرة – [285–286]*  
+آمَنَ الرَّسُولُ...  
+لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا...
+
+4. *باسمك ربي وضعت جنبي وبك أرفعه...*
+
+5. *اللهم قني عذابك يوم تبعث عبادك.*
+
+6. *اللهم أسلمت نفسي إليك، ووجهت وجهي إليك...*  
+(حديث البراء بن عازب – يُقال عند النوم على طهارة)
+
+7. *استغفر الله الذي لا إله إلا هو الحي القيوم وأتوب إليه.* – (ثلاث مرات)
+
+8. *سبحان الله – الحمد لله – الله أكبر*  
+(33 / 33 / 34 مرة على الترتيب)
+
+📚 *المصدر:* حصن المسلم – الأذكار النبوية
+"""
+    bot.send_message(user_id, text, parse_mode="Markdown")
+    @bot.message_handler(commands=['sleep'])
+def show_sleep_azkar(message):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("🛌 أذكار النوم (مختصرة)", callback_data="sleep_short"),
+        types.InlineKeyboardButton("🛌 أذكار النوم (كاملة)", callback_data="sleep_full")
+    )
+    bot.send_message(message.chat.id, "اختر نوع الأذكار:", reply_markup=markup)
+    @bot.callback_query_handler(func=lambda call: call.data == "sleep_short")
+def handle_sleep_short(call):
+    send_short_sleep_azkar(call.message.chat.id)
+
+@bot.callback_query_handler(func=lambda call: call.data == "sleep_full")
+def handle_sleep_full(call):
+    send_full_sleep_azkar(call.message.chat.id)
+    # دوال أذكار بعد الصلاة
+def send_short_salat_azkar(user_id):
+    text = """
+🕌 *أذكار بعد الصلاة – مختصرة:*
+
+1. *أستغفر الله* – (ثلاث مرات)
+
+2. *اللهم أنت السلام، ومنك السلام، تباركت يا ذا الجلال والإكرام.*
+
+3. *لا إله إلا الله وحده لا شريك له، له الملك وله الحمد، وهو على كل شيء قدير.*
+
+📚 *المصدر:* حصن المسلم – مختصرة بعد كل صلاة
+"""
+    bot.send_message(user_id, text, parse_mode="Markdown")
+
+
+def send_full_salat_azkar(user_id):
+    text = """
+🕌 *أذكار بعد الصلاة – كاملة:*
+
+1. *أستغفر الله* – (ثلاث مرات)
+
+2. *اللهم أنت السلام، ومنك السلام، تباركت يا ذا الجلال والإكرام.*
+
+3. *لا إله إلا الله وحده لا شريك له، له الملك وله الحمد، وهو على كل شيء قدير.*
+
+4. *اللهم أعني على ذكرك وشكرك وحسن عبادتك.*
+
+5. *سبحان الله – 33 مرة*  
+*الحمد لله – 33 مرة*  
+*الله أكبر – 34 مرة*
+
+6. *قراءة آية الكرسي* – [البقرة: 255]  
+اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ...
+
+📚 *المصدر:* حصن المسلم – الصيغة الكاملة بعد كل صلاة
+"""
+    bot.send_message(user_id, text, parse_mode="Markdown")
+    @bot.message_handler(commands=['salat_azkar'])
+def show_salat_azkar(message):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("🕌 أذكار الصلاة (مختصرة)", callback_data="salat_short"),
+        types.InlineKeyboardButton("🕌 أذكار الصلاة (كاملة)", callback_data="salat_full")
+    )
+    bot.send_message(message.chat.id, "اختر نوع الأذكار:", reply_markup=markup)
+    @bot.callback_query_handler(func=lambda call: call.data == "salat_short")
+def handle_salat_short(call):
+    send_short_salat_azkar(call.message.chat.id)
+
+@bot.callback_query_handler(func=lambda call: call.data == "salat_full")
+def handle_salat_full(call):
+    send_full_salat_azkar(call.message.chat.id)
+    def send_parents_dua(user_id):
+    duas = [
+        "اللهم ارحم والدَيّ كما ربياني صغيرًا.",
+        "اللهم اغفر لوالديّ، وارفع درجتهما في المهديين.",
+        "اللهم اجعل قبريهما روضة من رياض الجنة.",
+        "اللهم ارزق والديّ العفو والعافية والرضا.",
+        "اللهم اجعل برّي بهما سببًا لدخولي الجنة.",
+        "اللهم اجعل عملهما الصالح نورًا لهما في قبريهما.",
+        "اللهم ارزقهما من حيث لا يحتسبان، وبارك في أعمارهم إن كانوا أحياء، وارحمهم إن كانوا أمواتًا.",
+        "اللهم بلّغ أمي وأبي من الخير ما يتمنونه، واصرف عنهما كل سوء.",
+        "اللهم اجمعني بهما في الفردوس الأعلى بغير حساب ولا عذاب.",
+        "اللهم اجعل دعائي لوالديّ سببًا في رفع منزلتهم، وزدهم من الحسنات."
+    ]
+    selected = random.choice(duas)
+    bot.send_message(user_id, f"❤️ *دعاء للوالدين:*\n\n{selected}", parse_mode="Markdown")
+    @bot.message_handler(commands=['parents'])
+def show_parents_dua_button(message):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("دعاء جديد للوالدين", callback_data="parents_dua")
+    )
+    bot.send_message(message.chat.id, "اضغط الزر للحصول على دعاء متجدد للوالدين:", reply_markup=markup)
+    @bot.callback_query_handler(func=lambda call: call.data == "parents_dua")
+def handle_parents_dua(call):
+    send_parents_dua(call.message.chat.id)
+    def send_family_dua(user_id, category):
+    family_duas = {
+        "kids": [
+            "اللهم اجعل أبنائي هداة مهتدين، لا ضالين ولا مضلين.",
+            "اللهم ارزق أبنائي حبك وحب نبيك، والعمل بما يُرضيك.",
+            "اللهم بارك في أعمارهم، وحقق أحلامهم، واحفظهم من كل سوء.",
+            "اللهم اجعلهم من الصالحين، وقرّة عين لي ولوالدهم/والدتهم."
+        ],
+        "spouse": [
+            "اللهم اجعلني قرة عين لزوجي/زوجتي، واجعله/اجعلها قرة عين لي.",
+            "اللهم اجعل بيني وبين زوجي/زوجتي مودة ورحمة وسكينة.",
+            "اللهم أصلح ذات بيننا، وبارك لنا في أعمارنا وأعمالنا."
+        ],
+        "siblings": [
+            "اللهم احفظ إخواني وأخواتي، وبارك لي فيهم، وارزقنا برّ بعضنا.",
+            "اللهم لا تريني فيهم بأسًا يبكيني، واشملهم بعنايتك.",
+            "اللهم اجمعني بهم على الخير، ووفقهم لطاعتك."
+        ],
+        "family": [
+            "اللهم احفظ عائلتي من كل سوء، وبارك لي فيهم.",
+            "اللهم اجعلنا متحابين فيك، متعاونين على طاعتك.",
+            "اللهم ارزقنا رضاك والجنة، واجعلنا من الشاكرين."
+        ]
+    }
+    dua_list = family_duas.get(category, [])
+    if dua_list:
+        selected = random.choice(dua_list)
+        bot.send_message(user_id, f"📿 *دعاء العائلة:*\n\n{selected}", parse_mode="Markdown")
+        @bot.message_handler(commands=['family'])
+def show_family_dua_menu(message):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("دعاء للأبناء", callback_data="family_kids"),
+        types.InlineKeyboardButton("دعاء للزوج/الزوجة", callback_data="family_spouse")
+    )
+    markup.add(
+        types.InlineKeyboardButton("دعاء للإخوان", callback_data="family_siblings"),
+        types.InlineKeyboardButton("دعاء للعائلة", callback_data="family_family")
+    )
+    bot.send_message(message.chat.id, "اختر نوع الدعاء الذي تريده:", reply_markup=markup)
+   @bot.callback_query_handler(func=lambda call: call.data.startswith("family_"))
+def handle_family_dua(call):
+    category = call.data.replace("family_", "")
+    send_family_dua(call.message.chat.id, category)
+    def send_kids_protection_dua(user_id):
+    dua_text = """
+👶 *دعاء الاستعاذة للأطفال:*
+
+أُعِيذُكُمَا بِكَلِمَاتِ اللَّهِ التَّامَّةِ  
+مِنْ كُلِّ شَيْطَانٍ وَهَامَّةٍ،  
+وَمِنْ كُلِّ عَيْنٍ لَامَّةٍ.
+
+📚 *الراوي:* عبد الله بن عباس رضي الله عنهما  
+📘 *المصدر:* صحيح البخاري (3120)
+"""
+    bot.send_message(user_id, dua_text, parse_mode="Markdown")
+    @bot.message_handler(commands=['kids_dua'])
+def show_kids_dua(message):
+    send_kids_protection_dua(message.chat.id)
+    # دعاء الاستعاذة بالأبناء – صباحًا (7:30)
+scheduler.add_job(
+    lambda: [send_kids_protection_dua(uid) for uid in ALL_USERS_CHAT_IDS],
+    trigger='cron', hour=7, minute=30
+)
+
+# دعاء الاستعاذة بالأبناء – قبل المغرب (17:15)
+scheduler.add_job(
+    lambda: [send_kids_protection_dua(uid) for uid in ALL_USERS_CHAT_IDS],
+    trigger='cron', hour=17, minute=15
+)
+@bot.message_handler(commands=['dhikr'])
+def show_dhikr_counter_options(message):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("3 مرات", callback_data="dhikr_3"),
+        types.InlineKeyboardButton("10 مرات", callback_data="dhikr_10"),
+        types.InlineKeyboardButton("33 مرة", callback_data="dhikr_33"),
+        types.InlineKeyboardButton("100 مرة", callback_data="dhikr_100")
+    )
+    bot.send_message(message.chat.id, "اختر عدد التكرارات للذكر:", reply_markup=markup)
+    # حفظ حالات المستخدمين مؤقتًا (في الذاكرة فقط)
+user_dhikr_state = {}
+@bot.callback_query_handler(func=lambda call: call.data.startswith("dhikr_"))
+def start_dhikr_tracking(call):
+    count = int(call.data.replace("dhikr_", ""))
+    user_dhikr_state[call.from_user.id] = {"target": count, "current": 0}
+
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("اذكر الآن", callback_data="dhikr_click"))
+    bot.send_message(call.message.chat.id, f"اذكر الآن – {count} مرة\n\nاضغط على الزر مع كل تسبيحة.", reply_markup=markup)
+    @bot.callback_query_handler(func=lambda call: call.data == "dhikr_click")
+def handle_dhikr_click(call):
+    user_id = call.from_user.id
+    if user_id in user_dhikr_state:
+        state = user_dhikr_state[user_id]
+        state["current"] += 1
+
+        if state["current"] >= state["target"]:
+            bot.answer_callback_query(call.id, text="اكتمل الذكر! ما شاء الله.")
+            bot.send_message(call.message.chat.id, "✅ تم الذكر بنجاح. أسأل الله أن يتقبل منك.")
+            del user_dhikr_state[user_id]
+        else:
+            bot.answer_callback_query(call.id, text=f"عدّد الذكر: {state['current']} / {state['target']}")
+    else:
+        bot.answer_callback_query(call.id, text="ابدأ من /dhikr لاختيار العدد.")
+       random_duas = [
+    "اللهم أعني على ذكرك وشكرك وحسن عبادتك.",
+    "اللهم ارزقني رزقًا طيبًا واسعًا مباركًا.",
+    "اللهم فرّج همّي ويسّر أمري واشرح صدري.",
+    "اللهم اجعلني من التوابين واجعلني من المتطهرين.",
+    "اللهم اجعل لي من كل همٍ فرجًا ومن كل ضيقٍ مخرجًا.",
+    "اللهم اجعل عملي خالصًا لوجهك الكريم.",
+    "اللهم ارزقني توبةً نصوحًا قبل الموت.",
+    "اللهم اغفر لي ولوالدي وللمؤمنين يوم يقوم الحساب.",
+    "اللهم يا مُقلّب القلوب ثبّت قلبي على دينك.",
+    "اللهم إنك عفوٌ تحب العفو فاعفُ عني."
+]
+@bot.message_handler(commands=['dua'])
+def send_random_dua(message):
+    dua = random.choice(random_duas)
+    bot.send_message(message.chat.id, f"📿 *دعاء اليوم:*\n\n{dua}", parse_mode="Markdown")
+    bot.set_my_commands([
+    # ...
+    types.BotCommand("dua", "دعاء عشوائي يومي"),
+    # ...
+])
+   @bot.message_handler(commands=['share'])
+def share_reward(message):
+    bot.send_message(
+        message.chat.id,
+        "🔗 *شارك الأجر مع أصدقائك:*\n\n"
+        "أرسل هذا الرابط لأي شخص ليبدأ رحلته مع الأذكار والدعاء:\n"
+        "https://t.me/ZadJannah_Bot\n\n"
+        "كل من استفاد بسببك، فلك مثل أجره بإذن الله.",
+        parse_mode="Markdown"
+    )
+    bot.set_my_commands([
+    # ...
+    types.BotCommand("share", "شارك الأجر مع غيرك"),
+    # ...
+])
+  def send_witr_dua(user_id):
+    witr_dua = """
+🌙 *دعاء الوتر*:
+
+اللهم إنا نرغب إليك في دعاء الوتر:
   
+اللهم إني أعوذ برضاك من سخطك، وبمعافاتك من عقوبتك، وأعوذ بك منك، لا نحصي ثناءً عليك، أنت كما أثنيت على نفسك.
+
+📚 *المصدر:* الحديث النبوي الصحيح.
+    """
+    bot.send_message(user_id, witr_dua, parse_mode="Markdown")
+     @bot.message_handler(commands=['witr'])
+def send_witr_message(message):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("دعاء الوتر", callback_data="witr_dua")
+    )
+    bot.send_message(
+        message.chat.id, 
+        "🌙 *صلاة الوتر* – ختام صلاتك ليلًا.\n\n"
+        "أضف دعاء الوتر الآن!",
+        reply_markup=markup
+    )
+@bot.callback_query_handler(func=lambda call: call.data == "witr_dua")
+def handle_witr_dua(call):
+    send_witr_dua(call.message.chat.id)
+
