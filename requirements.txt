@@ -1,1 +1,1 @@
-pyTelegramBotAPI==4.0.0
+pip install apscheduler pyTelegramBotAPI==4.0.0
