@@ -67,10 +67,37 @@ bot.set_my_commands([
     types.BotCommand("get_prayer_times", "أوقات الصلاة بناءً على مدينتك")  # إضافة أمر للحصول على أوقات الصلاة
 ])
 
-# دالة استعلام أوقات الصلاة
+import requests
+
+def get_prayer_times(city):
+    location_url = f"https://nominatim.openstreetmap.org/search?city={city}&format=json"
+    response = requests.get(location_url)
+    location_data = response.json()
+
+    if location_data:
+        latitude = location_data[0]["lat"]
+        longitude = location_data[0]["lon"]
+
+        # استعلام أوقات الصلاة باستخدام Aladhan API
+        prayer_url = f"http://api.aladhan.com/v1/timings?latitude={latitude}&longitude={longitude}&method=2"
+        prayer_response = requests.get(prayer_url)
+        prayer_data = prayer_response.json()
+
+        if prayer_data["code"] == 200:
+            timings = prayer_data["data"]["timings"]
+            return timings
+        else:
+            return None
+    return None
+
+# الحصول على أوقات الصلاة بناءً على المدينة
 @bot.message_handler(commands=["get_prayer_times"])
 def send_prayer_times(message):
-    city = "مكة"  # هذه المدينة يمكن أن تأتي من إدخال المستخدم
+    city = message.text.replace("/get_prayer_times", "").strip()  # أخذ المدينة من المستخدم
+    if not city:
+        bot.send_message(message.chat.id, "من فضلك، قم بإدخال اسم المدينة.")
+        return
+
     prayer_times = get_prayer_times(city)
     
     if prayer_times:
