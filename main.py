@@ -5,10 +5,8 @@ import os
 from datetime import datetime
 from telebot import types
 from config import BOT_TOKEN, ADMIN_ID, USERS_DB_PATH, ALL_USERS_CHAT_IDS
-from scheduler import schedule_tasks
 
 bot = telebot.TeleBot(BOT_TOKEN)
-schedule_tasks()
 # تسجيل المستخدم تلقائيًا
 def register_user(user_id):
     try:
