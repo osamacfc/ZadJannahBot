@@ -1,9 +1,9 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from pytz import timezone
-from telegram import Bot
 from config import BOT_TOKEN, ADMIN_ID, TIMEZONE, ALL_USERS_CHAT_IDS
 from datetime import datetime
 from main import (
+    bot,
     send_morning_azkar,
     send_evening_azkar,
     send_witr_reminder,
@@ -15,7 +15,6 @@ from main import (
     send_last_third_night,
 )
 
-bot = Bot(token=BOT_TOKEN)
 tz = timezone(TIMEZONE)
 scheduler = BackgroundScheduler(timezone=tz)
 
@@ -23,7 +22,7 @@ scheduler = BackgroundScheduler(timezone=tz)
 def send_message(text):
     for user_id in ALL_USERS_CHAT_IDS:
         try:
-            bot.send_message(chat_id=user_id, text=text)
+            bot.send_message(user_id, text)
         except Exception as e:
             print(f"Error sending message to {user_id}: {e}")
 
