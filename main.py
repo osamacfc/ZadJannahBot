@@ -68,8 +68,10 @@ bot.set_my_commands([
 ])
 
 import requests
+from telebot import types
 
 def get_prayer_times(city):
+    # استعلام الإحداثيات باستخدام Nominatim API
     location_url = f"https://nominatim.openstreetmap.org/search?city={city}&format=json"
     response = requests.get(location_url)
     location_data = response.json()
@@ -90,14 +92,10 @@ def get_prayer_times(city):
             return None
     return None
 
-# الحصول على أوقات الصلاة بناءً على المدينة
+# دالة إظهار أوقات الصلاة للمستخدم
 @bot.message_handler(commands=["get_prayer_times"])
 def send_prayer_times(message):
-    city = message.text.replace("/get_prayer_times", "").strip()  # أخذ المدينة من المستخدم
-    if not city:
-        bot.send_message(message.chat.id, "من فضلك، قم بإدخال اسم المدينة.")
-        return
-
+    city = "مكة"  # هنا يُمكنك استبدالها بالمدينة المدخلة من المستخدم
     prayer_times = get_prayer_times(city)
     
     if prayer_times:
@@ -112,6 +110,15 @@ def send_prayer_times(message):
         bot.send_message(message.chat.id, response_text)
     else:
         bot.send_message(message.chat.id, "عذرًا، لم نتمكن من العثور على أوقات الصلاة للمدينة.")
+
+# زر عرض أوقات الصلاة
+@bot.message_handler(commands=["get_prayer_times_button"])
+def show_prayer_times_button(message):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("عرض أوقات الصلاة", callback_data="get_prayer_times")
+    )
+    bot.send_message(message.chat.id, "اضغط للحصول على أوقات الصلاة:", reply_markup=markup)
 # دالة عرض أذكار الصباح المختصرة
 @bot.message_handler(commands=['azkar'])
 def show_azkar_options(message):
