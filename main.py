@@ -444,6 +444,7 @@ def handle_salat_full(call):
     send_full_salat_azkar(call.message.chat.id)
 
 # الآن دالة دعاء الوالدين، تبدأ بشكل مستقل تمامًا:
+# دالة إرسال دعاء للوالدين
 def send_parents_dua(user_id):
     duas = [
         "اللهم ارحم والدَيّ كما ربياني صغيرًا.",
@@ -459,7 +460,8 @@ def send_parents_dua(user_id):
     ]
     selected = random.choice(duas)
     bot.send_message(user_id, f"❤️ *دعاء للوالدين:*\n\n{selected}", parse_mode="Markdown")
-    
+
+# أمر /parents – عرض زر دعاء الوالدين
 @bot.message_handler(commands=['parents'])
 def show_parents_dua_button(message):
     markup = types.InlineKeyboardMarkup()
@@ -471,8 +473,16 @@ def show_parents_dua_button(message):
         "اختر دعاء جديد للوالدين:",
         reply_markup=markup
     )
-bot.send_message(message.chat.id, "اضغط الزر للحصول على دعاء متجدد للوالدين:", reply_markup=markup)
+    bot.send_message(
+        message.chat.id,
+        "اضغط الزر للحصول على دعاء متجدد للوالدين:",
+        reply_markup=markup
+    )
 
+# تفعيل الزر التفاعلي
+@bot.callback_query_handler(func=lambda call: call.data == "parents_dua")
+def handle_parents_dua(call):
+    send_parents_dua(call.message.chat.id)
 @bot.callback_query_handler(func=lambda call: call.data == "parents_dua")
 def handle_parents_dua(call):
     send_parents_dua(call.message.chat.id)
