@@ -16,6 +16,10 @@ TOKEN = os.getenv("TOKEN")
 # إعداد البوت باستخدام التوكن
 bot = telebot.TeleBot(TOKEN)
 
+# تعطيل Webhook (لحل المشكلة التي ذكرتها)
+bot.delete_webhook()
+
+
 # إعدادات الجدولة
 scheduler = BackgroundScheduler(timezone=timezone("Asia/Riyadh"))
 
