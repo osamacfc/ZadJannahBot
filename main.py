@@ -1,5 +1,7 @@
 import os
 import time
+import json
+import random
 import logging
 import telebot
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -711,3 +713,5 @@ def send_witr_message(message):
 @bot.callback_query_handler(func=lambda call: call.data == "witr_dua")
 def handle_witr_dua(call):
     send_witr_dua(call.message.chat.id)
+    if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
