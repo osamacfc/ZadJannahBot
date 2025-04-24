@@ -9,6 +9,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import telebot
 from telebot import types
 
+# رقم المشرف
+ADMIN_ID = 585555633
+
 # إعداد التوكن والبوت
 TOKEN = os.getenv("TOKEN")
 bot = telebot.TeleBot(TOKEN)
@@ -385,16 +388,8 @@ def get_next_prayer_time(prayer_times):
             remaining = prayer_time - now
             hours, remainder = divmod(remaining.seconds, 3600)
             minutes, _ = divmod(remainder, 60)
-
-            if hours > 0:
-                formatted = f"{hours} ساعة و{minutes} دقيقة"
-            else:
-                formatted = f"{minutes} دقيقة فقط"
-
-            response = f"⏰ *الصلاة القادمة: {arabic_names[name]}*\n"
-            response += f"• الوقت: {time_str}\n"
-            response += f"• المتبقي: {formatted}\n"
-            response += f"• التوصية: {suggestions[name]}"
+            formatted = f"{hours} ساعة و{minutes} دقيقة" if hours > 0 else f"{minutes} دقيقة فقط"
+            response = f"⏰ *الصلاة القادمة: {arabic_names[name]}*\n• الوقت: {time_str}\n• المتبقي: {formatted}\n• التوصية: {suggestions[name]}"
             return response, name
 
     fajr_time = prayer_times.get("Fajr", "00:00")
@@ -403,7 +398,6 @@ def get_next_prayer_time(prayer_times):
 @bot.message_handler(commands=['next_salah'])
 def send_next_salah(message):
     user_id = message.chat.id
-
     try:
         with open("users.json", "r") as f:
             users = json.load(f)
@@ -419,7 +413,6 @@ def send_next_salah(message):
     times = get_prayer_times(user_city)
     if times:
         response, prayer_key = get_next_prayer_time(times)
-
         markup = types.InlineKeyboardMarkup()
         if prayer_key == "Fajr":
             markup.add(types.InlineKeyboardButton("🌅 دعاء الاستيقاظ", callback_data="dua_wakeup"))
@@ -434,6 +427,38 @@ def send_next_salah(message):
     else:
         bot.send_message(user_id, "تعذر جلب أوقات الصلاة حاليًا.")
 
+@bot.callback_query_handler(func=lambda call: call.data == "show_prayers")
+def handle_show_prayers_button(call):
+    user_id = call.message.chat.id
+    try:
+        with open("users.json", "r") as f:
+            users = json.load(f)
+    except:
+        users = []
+
+    user_city = next((u["city"] for u in users if u["id"] == user_id and isinstance(u, dict)), None)
+
+    if not user_city or user_city == "غير محددة":
+        bot.send_message(user_id, "من فضلك حدّد مدينتك أولاً باستخدام /get_prayer_times")
+        return
+
+    times = get_prayer_times(user_city)
+    if times:
+        response, prayer_key = get_next_prayer_time(times)
+        markup = types.InlineKeyboardMarkup()
+        if prayer_key == "Fajr":
+            markup.add(types.InlineKeyboardButton("🌅 دعاء الاستيقاظ", callback_data="dua_wakeup"))
+        elif prayer_key == "Maghrib":
+            markup.add(types.InlineKeyboardButton("🌇 دعاء بين الأذان والإقامة", callback_data="dua_adhan"))
+        elif prayer_key == "Isha":
+            markup.add(types.InlineKeyboardButton("🌙 دعاء الوتر", callback_data="witr_dua"))
+        else:
+            markup.add(types.InlineKeyboardButton("📿 سنة أو دعاء", callback_data="general_sunnah"))
+
+        bot.send_message(user_id, response, parse_mode="Markdown", reply_markup=markup)
+    else:
+        bot.send_message(user_id, "تعذر جلب أوقات الصلاة.")
+
 @bot.callback_query_handler(func=lambda call: call.data == "dua_wakeup")
 def send_wakeup_dua(call):
     bot.send_message(call.message.chat.id, "🌅 *دعاء الاستيقاظ:*\nالحمد لله الذي أحيانا بعدما أماتنا وإليه النشور.", parse_mode="Markdown")
@@ -445,7 +470,6 @@ def send_between_adhan_dua(call):
 @bot.callback_query_handler(func=lambda call: call.data == "general_sunnah")
 def send_general_sunnah(call):
     bot.send_message(call.message.chat.id, "📿 *سنة نبوية اليوم:*\nصلِّ ركعتين قبل الظهر أو أكثر، فهي من أحب الأعمال إلى الله.", parse_mode="Markdown")
-
 # استدعاء الأوقات عبر الزر التفاعلي
 @bot.callback_query_handler(func=lambda call: call.data == "show_prayers")
 def show_user_prayers(call):
@@ -505,21 +529,23 @@ def webhook():
         return "", 200
     return "Invalid", 403
 
-if __name__ == "__main__":
-    bot.remove_webhook()
-    bot.set_webhook(url="https://zadjannahbot.onrender.com/")
-    scheduler.start()
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+# قائمة البداية التفاعلية
+@bot.message_handler(commands=['start'])
+def show_main_menu(message):
     markup = types.InlineKeyboardMarkup(row_width=2)
-markup.add(
-    types.InlineKeyboardButton("أذكار الصباح", callback_data="azkar_morning"),
-    types.InlineKeyboardButton("أذكار المساء", callback_data="azkar_evening"),
-    types.InlineKeyboardButton("دعاء الوالدين", callback_data="parents_dua"),
-    types.InlineKeyboardButton("دعاء العائلة", callback_data="family_dua"),
-    types.InlineKeyboardButton("دعاء النوم", callback_data="sleep_dua"),
-    types.InlineKeyboardButton("دعاء الوتر", callback_data="witr_dua"),
-)
-bot.send_message(chat_id, "اختر من القائمة:", reply_markup=markup)
+    markup.add(
+        types.InlineKeyboardButton("☀️ أذكار الصباح", callback_data="azkar_morning"),
+        types.InlineKeyboardButton("🌙 أذكار المساء", callback_data="azkar_evening"),
+        types.InlineKeyboardButton("❤️ دعاء الوالدين", callback_data="parents_dua"),
+        types.InlineKeyboardButton("👨‍👩‍👧‍👦 دعاء العائلة", callback_data="family_dua"),
+        types.InlineKeyboardButton("🛌 دعاء النوم", callback_data="sleep_dua"),
+        types.InlineKeyboardButton("🌙 دعاء الوتر", callback_data="witr_dua"),
+        types.InlineKeyboardButton("⏰ الصلاة القادمة", callback_data="next_salah"),
+    )
+    bot.send_message(message.chat.id, "اختر من القائمة:", reply_markup=markup)
+
+
+# قائمة الأذكار
 @bot.message_handler(commands=['azkar'])
 def show_azkar_options(message):
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -531,6 +557,8 @@ def show_azkar_options(message):
     )
     bot.send_message(message.chat.id, "اختر نوع الأذكار:", reply_markup=markup)
 
+
+# قائمة الأدعية
 @bot.message_handler(commands=['dua'])
 def show_dua_menu(message):
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -544,6 +572,8 @@ def show_dua_menu(message):
     )
     bot.send_message(message.chat.id, "اختر نوع الدعاء الذي تريده:", reply_markup=markup)
 
+
+# عداد الذكر
 @bot.message_handler(commands=['dhikr'])
 def show_dhikr_counter(message):
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -555,6 +585,8 @@ def show_dhikr_counter(message):
     )
     bot.send_message(message.chat.id, "اختر عدد تكرارات الذكر:", reply_markup=markup)
 
+
+# قائمة الصيام
 @bot.message_handler(commands=['sunnah_fasting'])
 def show_sunnah_fasting(message):
     markup = types.InlineKeyboardMarkup(row_width=2)
