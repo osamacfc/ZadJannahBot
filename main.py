@@ -1,16 +1,38 @@
-import telebot
-import json
-import random
 import os
+import time
+import logging
+import telebot
+from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
+from pytz import timezone
+import requests
 from telebot import types
-from config import BOT_TOKEN, ADMIN_ID, USERS_DB_PATH, ALL_USERS_CHAT_IDS
 
-bot = telebot.TeleBot(BOT_TOKEN)
+TOKEN = os.getenv("TOKEN")
+bot = telebot.TeleBot(TOKEN)
+
+# إعدادات الجدولة
+scheduler = BackgroundScheduler(timezone=timezone("Asia/Riyadh"))
+
+# تخزين تفاعلات المستخدم
+user_interactions = {}
+
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    register_user(message.chat.id)
+    bot.send_message(
+        message.chat.id,
+        f"مرحبًا {message.from_user.first_name}!\n"
+        "أنا *ZadJannahBot* – زادك إلى الجنة بإذن الله.\n\n"
+        "ابدأ رحلتك اليومية مع الأذكار والصلاة والدعاء.\n"
+        "سنذكرك دائمًا بكل خير!",
+        parse_mode="Markdown"
+    )
+
 # تسجيل المستخدم تلقائيًا
 def register_user(user_id):
     try:
-        with open(USERS_DB_PATH, "r") as f:
+        with open("users.json", "r") as f:
             users = json.load(f)
     except:
         users = []
@@ -28,46 +50,54 @@ def register_user(user_id):
             "last_seen": str(datetime.now())
         }
         users.append(new_user)
-        with open(USERS_DB_PATH, "w") as f:
+        with open("users.json", "w") as f:
             json.dump(users, f, ensure_ascii=False, indent=2)
 
     global ALL_USERS_CHAT_IDS
     ALL_USERS_CHAT_IDS = [u["id"] if isinstance(u, dict) else u for u in users]
 
-# أمر /start – رسالة ترحيبية
-@bot.message_handler(commands=["start"])
-def send_welcome(message):
-    register_user(message.chat.id)
-    bot.send_message(
-        message.chat.id,
-        f"مرحبًا {message.from_user.first_name}!\n"
-        "أنا *ZadJannahBot* – زادك إلى الجنة بإذن الله.\n\n"
-        "ابدأ رحلتك اليومية مع الأذكار والصلاة والدعاء.\n"
-        "سنذكرك دائمًا بكل خير!",
-        parse_mode="Markdown"
-    )
+# إضافة تذكيرات للأذكار يومياً
+def daily_reminder():
+    for user_id in user_interactions:
+        bot.send_message(user_id, "تذكير بأذكار الصباح!")
 
-# إعداد قائمة الأوامر
-bot.set_my_commands([
-    types.BotCommand("start", "بدء البوت"),
-    types.BotCommand("azkar", "أذكار الصباح والمساء"),
-    types.BotCommand("sleep", "أذكار النوم"),
-    types.BotCommand("salat_azkar", "أذكار بعد الصلاة"),
-    types.BotCommand("deed", "أفعال بأجور عظيمة"),
-    types.BotCommand("witr", "تذكير بالوتر + دعاءه"),
-    types.BotCommand("name", "اسم من أسماء الله الحسنى"),
-    types.BotCommand("dua", "دعاء عشوائي"),
-    types.BotCommand("quote", "قال أحد الصالحين"),
-    types.BotCommand("khatmah", "جزء اليوم من القرآن"),
-    types.BotCommand("next_salah", "الصلاة القادمة"),
-    types.BotCommand("myinfo", "ملفك الشخصي"),
-    types.BotCommand("support", "الدعم والإعدادات"),
-    types.BotCommand("get_prayer_times", "أوقات الصلاة بناءً على مدينتك")  # إضافة أمر للحصول على أوقات الصلاة
-])
+# إضافة تذكير بالصلاة القادمة
+def prayer_reminder():
+    for user_id in user_interactions:
+        bot.send_message(user_id, "⏰ تذكير: الصلاة القادمة هي الفجر.")
 
-import requests
-from telebot import types
+# تحديث تفاعل المستخدم
+def update_user_interaction(user_id, interaction_type):
+    if user_id not in user_interactions:
+        user_interactions[user_id] = {}
+    if interaction_type not in user_interactions[user_id]:
+        user_interactions[user_id][interaction_type] = 0
+    user_interactions[user_id][interaction_type] += 1
 
+# تعيين التذكير على مدار اليوم
+scheduler.add_job(daily_reminder, 'cron', hour=6, minute=0)
+scheduler.add_job(prayer_reminder, 'cron', hour=4, minute=30)
+
+# دالة إظهار أوقات الصلاة للمستخدم
+@bot.message_handler(commands=["get_prayer_times"])
+def send_prayer_times(message):
+    city = "مكة"  # هنا يُمكنك استبدالها بالمدينة المدخلة من المستخدم
+    prayer_times = get_prayer_times(city)
+    
+    if prayer_times:
+        response_text = f"مرحبًا {message.from_user.first_name}!\n\n"
+        response_text += f"بناءً على موقعك في {city}، هذه هي أوقات الصلاة:\n"
+        response_text += f"- الفجر: {prayer_times['Fajr']}\n"
+        response_text += f"- الظهر: {prayer_times['Dhuhr']}\n"
+        response_text += f"- العصر: {prayer_times['Asr']}\n"
+        response_text += f"- المغرب: {prayer_times['Maghrib']}\n"
+        response_text += f"- العشاء: {prayer_times['Isha']}\n"
+        response_text += "نتمنى لك يومًا مباركًا!"
+        bot.send_message(message.chat.id, response_text)
+    else:
+        bot.send_message(message.chat.id, "عذرًا، لم نتمكن من العثور على أوقات الصلاة للمدينة.")
+
+# دالة لإستعلام أوقات الصلاة
 def get_prayer_times(city):
     # استعلام الإحداثيات باستخدام Nominatim API
     location_url = f"https://nominatim.openstreetmap.org/search?city={city}&format=json"
@@ -90,25 +120,19 @@ def get_prayer_times(city):
             return None
     return None
 
-# دالة إظهار أوقات الصلاة للمستخدم
-@bot.message_handler(commands=["get_prayer_times"])
-def send_prayer_times(message):
-    city = "مكة"  # هنا يُمكنك استبدالها بالمدينة المدخلة من المستخدم
-    prayer_times = get_prayer_times(city)
-    
-    if prayer_times:
-        response_text = f"مرحبًا {message.from_user.first_name}!\n\n"
-        response_text += f"بناءً على موقعك في {city}، هذه هي أوقات الصلاة:\n"
-        response_text += f"- الفجر: {prayer_times['Fajr']}\n"
-        response_text += f"- الظهر: {prayer_times['Dhuhr']}\n"
-        response_text += f"- العصر: {prayer_times['Asr']}\n"
-        response_text += f"- المغرب: {prayer_times['Maghrib']}\n"
-        response_text += f"- العشاء: {prayer_times['Isha']}\n"
-        response_text += "نتمنى لك يومًا مباركًا!"
-        bot.send_message(message.chat.id, response_text)
-    else:
-        bot.send_message(message.chat.id, "عذرًا، لم نتمكن من العثور على أوقات الصلاة للمدينة.")
+# بدء الجدولة
+scheduler.start()
 
+# تشغيل البوت
+def run_bot():
+    while True:
+        try:
+            bot.polling(none_stop=True)
+        except Exception as e:
+            logging.error(f"Error occurred: {e}")
+            time.sleep(15)
+
+run_bot()
 # زر عرض أوقات الصلاة
 @bot.message_handler(commands=["get_prayer_times_button"])
 def show_prayer_times_button(message):
