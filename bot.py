@@ -11,6 +11,9 @@ from telebot import types
 TOKEN = os.getenv("TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
+# حذف الـ Webhook
+bot.delete_webhook()
+
 # إعدادات الجدولة
 scheduler = BackgroundScheduler(timezone=timezone("Asia/Riyadh"))
 
