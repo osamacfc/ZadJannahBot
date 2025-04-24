@@ -1,46 +1,38 @@
 import os
-import time
 import json
 import random
-import logging
-import telebot
-from apscheduler.schedulers.background import BackgroundScheduler
+import requests
+from flask import Flask, request
 from datetime import datetime
 from pytz import timezone
-import requests
+from apscheduler.schedulers.background import BackgroundScheduler
+import telebot
 from telebot import types
 
+# إعداد التوكن والبوت
 TOKEN = os.getenv("TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
-# إعدادات الجدولة
+# Flask app
+app = Flask(__name__)
+
+# إعداد الجدولة
 scheduler = BackgroundScheduler(timezone=timezone("Asia/Riyadh"))
 
-# تخزين تفاعلات المستخدم
+# تحميل المستخدمين من الملف
+try:
+    with open("users.json", "r") as f:
+        users = json.load(f)
+except:
+    users = []
+
+ALL_USERS_CHAT_IDS = [u["id"] if isinstance(u, dict) else u for u in users]
 user_interactions = {}
 
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    register_user(message.chat.id)
-    bot.send_message(
-        message.chat.id,
-        f"مرحبًا {message.from_user.first_name}!\n"
-        "أنا *ZadJannahBot* – زادك إلى الجنة بإذن الله.\n\n"
-        "ابدأ رحلتك اليومية مع الأذكار والصلاة والدعاء.\n"
-        "سنذكرك دائمًا بكل خير!",
-        parse_mode="Markdown"
-    )
-
-# تسجيل المستخدم تلقائيًا
+# دالة تسجيل المستخدم
 def register_user(user_id):
-    try:
-        with open("users.json", "r") as f:
-            users = json.load(f)
-    except:
-        users = []
-
+    global ALL_USERS_CHAT_IDS
     existing_ids = [u["id"] if isinstance(u, dict) else u for u in users]
-
     if user_id not in existing_ids:
         new_user = {
             "id": user_id,
@@ -54,433 +46,129 @@ def register_user(user_id):
         users.append(new_user)
         with open("users.json", "w") as f:
             json.dump(users, f, ensure_ascii=False, indent=2)
-
-    global ALL_USERS_CHAT_IDS
     ALL_USERS_CHAT_IDS = [u["id"] if isinstance(u, dict) else u for u in users]
 
-# إضافة تذكيرات للأذكار يومياً
-def daily_reminder():
-    for user_id in user_interactions:
-        bot.send_message(user_id, "تذكير بأذكار الصباح!")
-
-# إضافة تذكير بالصلاة القادمة
-def prayer_reminder():
-    for user_id in user_interactions:
-        bot.send_message(user_id, "⏰ تذكير: الصلاة القادمة هي الفجر.")
-
-# تحديث تفاعل المستخدم
-def update_user_interaction(user_id, interaction_type):
-    if user_id not in user_interactions:
-        user_interactions[user_id] = {}
-    if interaction_type not in user_interactions[user_id]:
-        user_interactions[user_id][interaction_type] = 0
-    user_interactions[user_id][interaction_type] += 1
-
-# تعيين التذكير على مدار اليوم
-scheduler.add_job(daily_reminder, 'cron', hour=6, minute=0)
-scheduler.add_job(prayer_reminder, 'cron', hour=4, minute=30)
-
-# دالة إظهار أوقات الصلاة للمستخدم
-@bot.message_handler(commands=["get_prayer_times"])
-def send_prayer_times(message):
-    city = "مكة"  # هنا يُمكنك استبدالها بالمدينة المدخلة من المستخدم
-    prayer_times = get_prayer_times(city)
-    
-    if prayer_times:
-        response_text = f"مرحبًا {message.from_user.first_name}!\n\n"
-        response_text += f"بناءً على موقعك في {city}، هذه هي أوقات الصلاة:\n"
-        response_text += f"- الفجر: {prayer_times['Fajr']}\n"
-        response_text += f"- الظهر: {prayer_times['Dhuhr']}\n"
-        response_text += f"- العصر: {prayer_times['Asr']}\n"
-        response_text += f"- المغرب: {prayer_times['Maghrib']}\n"
-        response_text += f"- العشاء: {prayer_times['Isha']}\n"
-        response_text += "نتمنى لك يومًا مباركًا!"
-        bot.send_message(message.chat.id, response_text)
-    else:
-        bot.send_message(message.chat.id, "عذرًا، لم نتمكن من العثور على أوقات الصلاة للمدينة.")
-
-# دالة لإستعلام أوقات الصلاة
-def get_prayer_times(city):
-    # استعلام الإحداثيات باستخدام Nominatim API
-    location_url = f"https://nominatim.openstreetmap.org/search?city={city}&format=json"
-    response = requests.get(location_url)
-    location_data = response.json()
-
-    if location_data:
-        latitude = location_data[0]["lat"]
-        longitude = location_data[0]["lon"]
-
-        # استعلام أوقات الصلاة باستخدام Aladhan API
-        prayer_url = f"http://api.aladhan.com/v1/timings?latitude={latitude}&longitude={longitude}&method=2"
-        prayer_response = requests.get(prayer_url)
-        prayer_data = prayer_response.json()
-
-        if prayer_data["code"] == 200:
-            timings = prayer_data["data"]["timings"]
-            return timings
-        else:
-            return None
-    return None
-
-# بدء الجدولة
-from flask import Flask, request
-
-app = Flask(__name__)
-
-@app.route("/", methods=["POST"])
-def webhook():
-    if request.headers.get("content-type") == "application/json":
-        json_string = request.get_data().decode("utf-8")
-        update = telebot.types.Update.de_json(json_string)
-        bot.process_new_updates([update])
-        return "", 200
-    else:
-        return "Invalid request", 403
-
-from flask import Flask, request
-
-app = Flask(__name__)
-
-@app.route("/", methods=["POST"])
-def webhook():
-    if request.headers.get("content-type") == "application/json":
-        json_string = request.get_data().decode("utf-8")
-        update = telebot.types.Update.de_json(json_string)
-        bot.process_new_updates([update])
-        return "", 200
-    else:
-        return "Invalid request", 403
-
-if __name__ == "__main__":
-    bot.remove_webhook()
-    bot.set_webhook(url="https://zadjannahbot.onrender.com/")
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-# زر عرض أوقات الصلاة
-@bot.message_handler(commands=["get_prayer_times_button"])
-def show_prayer_times_button(message):
-    markup = types.InlineKeyboardMarkup()
-    markup.add(
-        types.InlineKeyboardButton("عرض أوقات الصلاة", callback_data="get_prayer_times")
-    )
-    bot.send_message(message.chat.id, "اضغط للحصول على أوقات الصلاة:", reply_markup=markup)
-# دالة عرض أذكار الصباح المختصرة
-@bot.message_handler(commands=['azkar'])
-def show_azkar_options(message):
-    markup = types.InlineKeyboardMarkup()
-    markup.add(
-        types.InlineKeyboardButton("☀️ أذكار الصباح (مختصرة)", callback_data="azkar_morning_short"),
-        types.InlineKeyboardButton("☀️ أذكار الصباح (كاملة)", callback_data="azkar_morning_full"),
-    )
-    markup.add(
-        types.InlineKeyboardButton("🌙 أذكار المساء (مختصرة)", callback_data="azkar_evening_short"),
-        types.InlineKeyboardButton("🌙 أذكار المساء (كاملة)", callback_data="azkar_evening_full")
-    )
-    bot.send_message(message.chat.id, "اختر نوع الأذكار:", reply_markup=markup)
-@bot.callback_query_handler(func=lambda call: call.data == "azkar_morning_short")
-def handle_short_morning(call):
-    send_short_morning_azkar(call.message.chat.id)
-
-@bot.callback_query_handler(func=lambda call: call.data == "azkar_morning_full")
-def handle_full_morning(call):
-    send_full_morning_azkar(call.message.chat.id)
-
-@bot.callback_query_handler(func=lambda call: call.data == "azkar_evening_short")
-def handle_short_evening(call):
-    send_short_evening_azkar(call.message.chat.id)
-
-@bot.callback_query_handler(func=lambda call: call.data == "azkar_evening_full")
-def handle_full_evening(call):
-    send_full_evening_azkar(call.message.chat.id)
-def send_short_morning_azkar(user_id):
-    short_morning_azkar = """☀️ *أذكار الصباح – مختصرة:* ... """
-    bot.send_message(user_id, short_morning_azkar, parse_mode="Markdown")
-short_morning_azkar = """1. *آية الكرسي:*  
-اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ، لَهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ... [البقرة: 255]
-
-2. *سورة الإخلاص:*  
-قُلْ هُوَ اللَّهُ أَحَدٌ، اللَّهُ الصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ.
-
-3. *سورة الفلق:*  
-قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ، مِن شَرِّ مَا خَلَقَ، وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ، وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ، وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ.
-
-4. *سورة الناس:*  
-قُلْ أَعُوذُ بِرَبِّ النَّاسِ، مَلِكِ النَّاسِ، إِلَٰهِ النَّاسِ، مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ، الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ، مِنَ الْجِنَّةِ وَالنَّاسِ.
-
-5. *آخر آيتين من سورة البقرة:*  
-آمَنَ الرَّسُولُ بِمَا أُنزِلَ إِلَيْهِ مِن رَبِّهِ وَالْمُؤْمِنُونَ...  
-لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا... [البقرة: 285-286]
-
-6. *أصبحنا وأصبح الملك لله...*  
-أصبحنا وأصبح الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد، وهو على كل شيء قدير...
-
-7. *رضيت بالله ربًا...*  
-رضيت بالله ربًّا، وبالإسلام دينًا، وبمحمد ﷺ نبيًّا. (ثلاث مرات)
-
-📚 *المصدر:* حصن المسلم – النصوص الكاملة."""
-def send_short_morning_azkar(user_id):
-    short_morning_azkar = """..."""  # الأذكار هنا
-    bot.send_message(user_id, short_morning_azkar, parse_mode="Markdown")
-
-# زر تفاعلي عند الضغط على "أذكار مختصرة"
-@bot.callback_query_handler(func=lambda call: call.data == "azkar_morning_short")
-def handle_short_morning_azkar(call):
-    send_short_morning_azkar(call.message.chat.id)
-  # دالة عرض أذكار الصباح الكاملة
-def send_full_morning_azkar(user_id):
-    full_morning_azkar = """
-☀️ *أذكار الصباح – كاملة:*
-
-1. *آية الكرسي:*  
-اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ، لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ، لَهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ... [البقرة: 255]
-
-2. *سورة الإخلاص – 3 مرات:*  
-قُلْ هُوَ اللَّهُ أَحَدٌ، اللَّهُ الصَّمَدُ، لَمْ يَلِدْ وَلَمْ يُولَدْ، وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ.
-
-3. *سورة الفلق – 3 مرات:*  
-قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ... (كاملة).
-
-4. *سورة الناس – 3 مرات:*  
-قُلْ أَعُوذُ بِرَبِّ النَّاسِ... (كاملة).
-
-5. *أصبحنا وأصبح الملك لله...*
-
-6. *اللهم بك أصبحنا وبك أمسينا...*
-
-7. *رضيت بالله ربًا...* (ثلاث مرات)
-
-8. *اللهم ما أصبح بي من نعمة...*
-
-9. *اللهم عافني في بدني...* (ثلاث مرات)
-
-10. *اللهم إني أسألك العفو والعافية...*
-
-11. *اللهم إني أصبحت أشهدك...* (أربع مرات)
-
-12. *حسبي الله لا إله إلا هو...* (سبع مرات)
-
-13. *اللهم إني أعوذ بك من الهم والحزن...*
-
-14. *اللهم إني أعوذ بك من الكفر والفقر...*
-
-15. *اللهم إني أعوذ بك من الجبن والبخل...*
-
-16. *اللهم إني أسألك علماً نافعًا...*
-
-17. *استغفر الله العظيم وأتوب إليه.*
-
-18. *سبحان الله وبحمده – 100 مرة*
-
-19. *لا إله إلا الله وحده لا شريك له...* – 100 مرة
-
-20. *آخر آيتين من سورة البقرة:*  
-آمَنَ الرَّسُولُ...  
-لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا... [البقرة: 285–286]
-
-📚 *المصدر:* حصن المسلم – الصيغة الكاملة المعتمدة.
-    """
-    bot.send_message(user_id, full_morning_azkar, parse_mode="Markdown")
-
-# زر تفاعلي عند الضغط على "أذكار كاملة"
-@bot.callback_query_handler(func=lambda call: call.data == "azkar_morning_full")
-def handle_full_morning_azkar(call):
-    send_full_morning_azkar(call.message.chat.id)
-  # دالة عرض أذكار المساء المختصرة
-def send_short_evening_azkar(user_id):
-    short_evening_azkar = """
-🌙 *أذكار المساء – مختصرة:*
-
-1. *آية الكرسي:*  
-اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ... [البقرة: 255]
-
-2. *سورة الإخلاص*  
-قُلْ هُوَ اللَّهُ أَحَدٌ، اللَّهُ الصَّمَدُ... (كاملة)
-
-3. *سورة الفلق*  
-قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ... (كاملة)
-
-4. *سورة الناس*  
-قُلْ أَعُوذُ بِرَبِّ النَّاسِ... (كاملة)
-
-5. *آخر آيتين من سورة البقرة:*  
-آمَنَ الرَّسُولُ...  
-لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا... [البقرة: 285–286]
-
-6. *أمسينا وأمسى الملك لله...*
-
-7. *رضيت بالله ربًا...* (ثلاث مرات)
-
-📚 *المصدر:* حصن المسلم – مختارة بصيغ كاملة
-    """
-    bot.send_message(user_id, short_evening_azkar, parse_mode="Markdown")
-
-# زر تفاعلي عند الضغط على "أذكار المساء المختصرة"
-@bot.callback_query_handler(func=lambda call: call.data == "azkar_evening_short")
-def handle_short_evening_azkar(call):
-    send_short_evening_azkar(call.message.chat.id)
-  # دالة عرض أذكار المساء الكاملة
-def send_full_evening_azkar(user_id):
-    full_evening_azkar = """
-🌙 *أذكار المساء – كاملة:*
-
-1. *آية الكرسي* – [البقرة: 255]
-
-2. *الإخلاص – 3 مرات*
-
-3. *الفلق – 3 مرات*
-
-4. *الناس – 3 مرات*
-
-5. *أمسينا وأمسى الملك لله...*
-
-6. *اللهم بك أمسينا وبك أصبحنا...*
-
-7. *رضيت بالله ربًا...* – (ثلاث مرات)
-
-8. *اللهم ما أمسى بي من نعمة...*
-
-9. *اللهم عافني في بدني...* – (ثلاث مرات)
-
-10. *اللهم إني أسألك العفو والعافية...*
-
-11. *اللهم إني أمسيت أشهدك...* – (أربع مرات)
-
-12. *حسبي الله لا إله إلا هو...* – (سبع مرات)
-
-13. *اللهم إني أعوذ بك من الهم والحزن...*
-
-14. *اللهم إني أعوذ بك من الكسل والعجز...*
-
-15. *استغفر الله العظيم وأتوب إليه.*
-
-16. *سبحان الله وبحمده – 100 مرة*
-
-17. *لا إله إلا الله وحده لا شريك له...* – 100 مرة
-
-18. *آخر آيتين من سورة البقرة* – [البقرة: 285–286]
-
-📚 *المصدر:* حصن المسلم – الصيغة الكاملة
-    """
-    bot.send_message(user_id, full_evening_azkar, parse_mode="Markdown")
-
-# زر تفاعلي عند الضغط على "أذكار المساء الكاملة"
-@bot.callback_query_handler(func=lambda call: call.data == "azkar_evening_full")
-def handle_full_evening_azkar(call):
-    send_full_evening_azkar(call.message.chat.id)
-# دوال أذكار النوم
-def send_short_sleep_azkar(user_id):
-    text = """
-🛌 *أذكار النوم – مختصرة:*
-
-1. *باسمك ربي وضعت جنبي وبك أرفعه، إن أمسكت نفسي فارحمها وإن أرسلتها فاحفظها.*
-
-2. *اللهم باسمك أموت وأحيا.*
-
-3. *اللهم قني عذابك يوم تبعث عبادك.*
-
-4. *اللهم أسلمت نفسي إليك، وفوضت أمري إليك، وألجأت ظهري إليك...*
-
-📚 *المصدر:* حصن المسلم
-"""
-    bot.send_message(user_id, text, parse_mode="Markdown")
-
-
-def send_full_sleep_azkar(user_id):
-    text = """
-🛌 *أذكار النوم – كاملة:*
-
-1. *آية الكرسي* – [البقرة: 255]  
-اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ...
-
-2. *الإخلاص – الفلق – الناس* (مرة واحدة لكل سورة)
-
-3. *آخر آيتين من سورة البقرة – [285–286]*  
-آمَنَ الرَّسُولُ...  
-لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا...
-
-4. *باسمك ربي وضعت جنبي وبك أرفعه...*
-
-5. *اللهم قني عذابك يوم تبعث عبادك.*
-
-6. *اللهم أسلمت نفسي إليك، ووجهت وجهي إليك...*  
-(حديث البراء بن عازب – يُقال عند النوم على طهارة)
-
-7. *استغفر الله الذي لا إله إلا هو الحي القيوم وأتوب إليه.* – (ثلاث مرات)
-
-8. *سبحان الله – الحمد لله – الله أكبر*  
-(33 / 33 / 34 مرة على الترتيب)
-
-📚 *المصدر:* حصن المسلم – الأذكار النبوية
-"""
-    bot.send_message(user_id, text, parse_mode="Markdown")
-@bot.message_handler(commands=['sleep'])
-def show_sleep_azkar(message):
-    markup = types.InlineKeyboardMarkup()
-    markup.add(
-        types.InlineKeyboardButton("🛌 أذكار النوم (مختصرة)", callback_data="sleep_short"),
-        types.InlineKeyboardButton("🛌 أذكار النوم (كاملة)", callback_data="sleep_full")
-    )
+# أمر /start
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    register_user(message.chat.id)
     bot.send_message(
         message.chat.id,
-        "اختر نوع أذكار النوم التي تريد عرضها:",
-        reply_markup=markup
+        f"مرحبًا {message.from_user.first_name}!\n"
+        "أنا *ZadJannahBot* – زادك إلى الجنة بإذن الله.\n\n"
+        "ابدأ رحلتك اليومية مع الأذكار والصلاة والدعاء.\n"
+        "سنذكرك دائمًا بكل خير!",
+        parse_mode="Markdown"
     )
+
+# أذكار الصباح والمساء
+def send_short_morning_azkar(user_id):
+    text = "☀️ *أذكار الصباح – مختصرة:*\n1. آية الكرسي\n2. الإخلاص\n3. الفلق\n4. الناس"
+    bot.send_message(user_id, text, parse_mode="Markdown")
+
+def send_short_evening_azkar(user_id):
+    text = "🌙 *أذكار المساء – مختصرة:*\n1. آية الكرسي\n2. الإخلاص\n3. الفلق\n4. الناس"
+    bot.send_message(user_id, text, parse_mode="Markdown")
+
+@bot.message_handler(commands=['azkar'])
+def show_azkar(message):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("☀️ أذكار الصباح", callback_data="morning"))
+    markup.add(types.InlineKeyboardButton("🌙 أذكار المساء", callback_data="evening"))
     bot.send_message(message.chat.id, "اختر نوع الأذكار:", reply_markup=markup)
 
-@bot.callback_query_handler(func=lambda call: call.data == "sleep_short")
-def handle_sleep_short(call):
-    send_short_sleep_azkar(call.message.chat.id)
+@bot.callback_query_handler(func=lambda call: call.data == "morning")
+def handle_morning(call):
+    send_short_morning_azkar(call.message.chat.id)
 
-@bot.callback_query_handler(func=lambda call: call.data == "sleep_full")
-def handle_sleep_full(call):
-    send_full_sleep_azkar(call.message.chat.id)
-    # دوال أذكار بعد الصلاة
+@bot.callback_query_handler(func=lambda call: call.data == "evening")
+def handle_evening(call):
+    send_short_evening_azkar(call.message.chat.id)
+
+# أذكار النوم
+def send_sleep_azkar(user_id):
+    text = "🛌 *أذكار النوم:*\n1. باسمك ربي وضعت جنبي...\n2. اللهم باسمك أموت وأحيا..."
+    bot.send_message(user_id, text, parse_mode="Markdown")
+
+@bot.message_handler(commands=['sleep'])
+def sleep_command(message):
+    send_sleep_azkar(message.chat.id)
+
+# دعاء الوتر
+def send_witr_dua(user_id):
+    text = "🌙 *دعاء الوتر:*\nاللهم إني أعوذ برضاك من سخطك، وبمعافاتك من عقوبتك..."
+    bot.send_message(user_id, text, parse_mode="Markdown")
+
+@bot.message_handler(commands=['witr'])
+def show_witr(message):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("دعاء الوتر", callback_data="witr_dua"))
+    bot.send_message(message.chat.id, "اضغط لعرض دعاء الوتر:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == "witr_dua")
+def handle_witr(call):
+    send_witr_dua(call.message.chat.id)
+
+# عداد الذكر التفاعلي
+user_dhikr_state = {}
+
+@bot.message_handler(commands=['dhikr'])
+def dhikr_start(message):
+    markup = types.InlineKeyboardMarkup()
+    for count in [3, 10, 33, 100]:
+        markup.add(types.InlineKeyboardButton(f"{count} مرة", callback_data=f"dhikr_{count}"))
+    bot.send_message(message.chat.id, "اختر عدد مرات الذكر:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("dhikr_"))
+def start_dhikr(call):
+    count = int(call.data.split("_")[1])
+    user_dhikr_state[call.from_user.id] = {"target": count, "current": 0}
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("اذكر الآن", callback_data="dhikr_click"))
+    bot.send_message(call.message.chat.id, f"اذكر الآن – {count} مرة", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == "dhikr_click")
+def dhikr_click(call):
+    user_id = call.from_user.id
+    if user_id in user_dhikr_state:
+        state = user_dhikr_state[user_id]
+        state["current"] += 1
+        if state["current"] >= state["target"]:
+            bot.send_message(call.message.chat.id, "✅ اكتمل الذكر! أسأل الله أن يتقبل.")
+            del user_dhikr_state[user_id]
+        else:
+            bot.answer_callback_query(call.id, f"{state['current']} / {state['target']}")
+            # أذكار بعد الصلاة – مختصرة وكاملة
 def send_short_salat_azkar(user_id):
     text = """
 🕌 *أذكار بعد الصلاة – مختصرة:*
-
-1. *أستغفر الله* – (ثلاث مرات)
-
-2. *اللهم أنت السلام، ومنك السلام، تباركت يا ذا الجلال والإكرام.*
-
-3. *لا إله إلا الله وحده لا شريك له، له الملك وله الحمد، وهو على كل شيء قدير.*
-
-📚 *المصدر:* حصن المسلم – مختصرة بعد كل صلاة
+1. أستغفر الله (3 مرات)
+2. اللهم أنت السلام ومنك السلام...
+3. لا إله إلا الله وحده لا شريك له...
 """
     bot.send_message(user_id, text, parse_mode="Markdown")
-
 
 def send_full_salat_azkar(user_id):
     text = """
 🕌 *أذكار بعد الصلاة – كاملة:*
-
-1. *أستغفر الله* – (ثلاث مرات)
-
-2. *اللهم أنت السلام، ومنك السلام، تباركت يا ذا الجلال والإكرام.*
-
-3. *لا إله إلا الله وحده لا شريك له، له الملك وله الحمد، وهو على كل شيء قدير.*
-
-4. *اللهم أعني على ذكرك وشكرك وحسن عبادتك.*
-
-5. *سبحان الله – 33 مرة*  
-*الحمد لله – 33 مرة*  
-*الله أكبر – 34 مرة*
-
-6. *قراءة آية الكرسي* – [البقرة: 255]  
-اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ...
-
-📚 *المصدر:* حصن المسلم – الصيغة الكاملة بعد كل صلاة
+1. أستغفر الله (3 مرات)
+2. اللهم أنت السلام ومنك السلام...
+3. لا إله إلا الله وحده لا شريك له...
+4. اللهم أعني على ذكرك وشكرك...
+5. سبحان الله 33 – الحمد لله 33 – الله أكبر 34
+6. آية الكرسي [البقرة: 255]
 """
     bot.send_message(user_id, text, parse_mode="Markdown")
 
 @bot.message_handler(commands=['salat_azkar'])
-def show_salat_azkar(message):
+def salat_azkar_command(message):
     markup = types.InlineKeyboardMarkup()
     markup.add(
-        types.InlineKeyboardButton("🕌 أذكار الصلاة (مختصرة)", callback_data="salat_short"),
-        types.InlineKeyboardButton("🕌 أذكار الصلاة (كاملة)", callback_data="salat_full")
+        types.InlineKeyboardButton("🕌 مختصرة", callback_data="salat_short"),
+        types.InlineKeyboardButton("🕌 كاملة", callback_data="salat_full")
     )
-    bot.send_message(message.chat.id, "اختر نوع أذكار الصلاة:", reply_markup=markup)
-    bot.send_message(message.chat.id, "اختر نوع الأذكار:", reply_markup=markup)
+    bot.send_message(message.chat.id, "اختر نوع الأذكار بعد الصلاة:", reply_markup=markup)
+
 @bot.callback_query_handler(func=lambda call: call.data == "salat_short")
 def handle_salat_short(call):
     send_short_salat_azkar(call.message.chat.id)
@@ -489,252 +177,278 @@ def handle_salat_short(call):
 def handle_salat_full(call):
     send_full_salat_azkar(call.message.chat.id)
 
-# الآن دالة دعاء الوالدين، تبدأ بشكل مستقل تمامًا:
-# دالة إرسال دعاء للوالدين
+# دعاء الوالدين
 def send_parents_dua(user_id):
     duas = [
         "اللهم ارحم والدَيّ كما ربياني صغيرًا.",
-        "اللهم اغفر لوالديّ، وارفع درجتهما في المهديين.",
         "اللهم اجعل قبريهما روضة من رياض الجنة.",
-        "اللهم ارزق والديّ العفو والعافية والرضا.",
-        "اللهم اجعل برّي بهما سببًا لدخولي الجنة.",
-        "اللهم اجعل عملهما الصالح نورًا لهما في قبريهما.",
-        "اللهم ارزقهما من حيث لا يحتسبان، وبارك في أعمارهم إن كانوا أحياء، وارحمهم إن كانوا أمواتًا.",
-        "اللهم بلّغ أمي وأبي من الخير ما يتمنونه، واصرف عنهما كل سوء.",
-        "اللهم اجمعني بهما في الفردوس الأعلى بغير حساب ولا عذاب.",
-        "اللهم اجعل دعائي لوالديّ سببًا في رفع منزلتهم، وزدهم من الحسنات."
+        "اللهم اجمعني بهما في الفردوس الأعلى."
     ]
-    selected = random.choice(duas)
-    bot.send_message(user_id, f"❤️ *دعاء للوالدين:*\n\n{selected}", parse_mode="Markdown")
+    bot.send_message(user_id, f"❤️ *دعاء للوالدين:*\n\n{random.choice(duas)}", parse_mode="Markdown")
 
-# أمر /parents – عرض زر دعاء الوالدين
 @bot.message_handler(commands=['parents'])
-def show_parents_dua_button(message):
+def parents_command(message):
     markup = types.InlineKeyboardMarkup()
-    markup.add(
-        types.InlineKeyboardButton("دعاء جديد للوالدين", callback_data="parents_dua")
-    )
-    bot.send_message(
-        message.chat.id,
-        "اختر دعاء جديد للوالدين:",
-        reply_markup=markup
-    )
-    bot.send_message(
-        message.chat.id,
-        "اضغط الزر للحصول على دعاء متجدد للوالدين:",
-        reply_markup=markup
-    )
+    markup.add(types.InlineKeyboardButton("دعاء جديد", callback_data="parents_dua"))
+    bot.send_message(message.chat.id, "اضغط الزر للحصول على دعاء جديد:", reply_markup=markup)
 
-# تفعيل الزر التفاعلي
 @bot.callback_query_handler(func=lambda call: call.data == "parents_dua")
-def handle_parents_dua(call):
-    send_parents_dua(call.message.chat.id)
-@bot.callback_query_handler(func=lambda call: call.data == "parents_dua")
-def handle_parents_dua(call):
+def handle_parents(call):
     send_parents_dua(call.message.chat.id)
 
+# دعاء العائلة: الأبناء – الزوج – الإخوان – العائلة
 def send_family_dua(user_id, category):
     family_duas = {
         "kids": [
             "اللهم اجعلهم هداةً مهتدين، لا ضالين ولا مضلين.",
-            "اللهم ارزقهم حبك وحب نبيك، والعمل بما يُرضيك.",
-            "اللهم احفظهم من كل سوء، ووفقهم لما تحب وترضى.",
-            "اللهم نوّر دربهم، ووسع رزقهم، وبارك في أعمارهم.",
-            "اللهم اجعلهم من أهل القرآن وأهل الصلاح."
+            "اللهم ارزقهم حبك والعمل بما يُرضيك."
         ],
         "spouse": [
-            "اللهم اجعلني قرة عين لزوجي/زوجتي، واجعله/اجعلها قرة عين لي.",
-            "اللهم اجعل بيني وبين زوجي/زوجتي مودة ورحمة وسكينة.",
-            "اللهم أصلح ذات بيننا، وبارك لنا في أعمارنا وأعمالنا."
+            "اللهم اجعل بيني وبين زوجي/زوجتي مودة ورحمة.",
+            "اللهم أصلح ذات بيننا وبارك لنا."
         ],
         "siblings": [
-            "اللهم احفظ إخواني وأخواتي، وبارك لي فيهم، وارزقنا برّ بعضنا.",
-            "اللهم لا تريني فيهم بأسًا يبكيني، واشملهم بعنايتك.",
-            "اللهم اجمعني بهم على الخير، ووفقهم لطاعتك."
+            "اللهم احفظ إخواني وأخواتي وبارك لي فيهم.",
+            "اللهم اجمعني بهم على طاعتك."
         ],
         "family": [
-            "اللهم احفظ عائلتي من كل سوء، وبارك لي فيهم.",
-            "اللهم اجعلنا متحابين فيك، متعاونين على طاعتك.",
-            "اللهم ارزقنا رضاك والجنة، واجعلنا من الشاكرين."
+            "اللهم احفظ عائلتي من كل سوء.",
+            "اللهم اجعلنا متحابين فيك متعاونين على طاعتك."
         ]
     }
 
-    dua_list = family_duas.get(category, [])
-    if dua_list:
-        selected = random.choice(dua_list)
-        bot.send_message(user_id, f"📿 *دعاء العائلة:*\n\n{selected}", parse_mode="Markdown")
-
+    selected = random.choice(family_duas.get(category, []))
+    bot.send_message(user_id, f"📿 *دعاء العائلة:*\n\n{selected}", parse_mode="Markdown")
 
 @bot.message_handler(commands=['family'])
-def show_family_dua_menu(message):
+def family_menu(message):
     markup = types.InlineKeyboardMarkup()
-    markup.add(
-        types.InlineKeyboardButton("دعاء للأبناء", callback_data="family_kids"),
-        types.InlineKeyboardButton("دعاء للزوج/الزوجة", callback_data="family_spouse")
-    )
-    markup.add(
-        types.InlineKeyboardButton("دعاء للإخوان", callback_data="family_siblings"),
-        types.InlineKeyboardButton("دعاء للعائلة", callback_data="family_family")
-    )
-    bot.send_message(message.chat.id, "اختر نوع الدعاء الذي تريده:", reply_markup=markup)
-
+    markup.add(types.InlineKeyboardButton("دعاء للأبناء", callback_data="family_kids"))
+    markup.add(types.InlineKeyboardButton("دعاء للزوج/الزوجة", callback_data="family_spouse"))
+    markup.add(types.InlineKeyboardButton("دعاء للإخوان", callback_data="family_siblings"))
+    markup.add(types.InlineKeyboardButton("دعاء للعائلة", callback_data="family_family"))
+    bot.send_message(message.chat.id, "اختر نوع الدعاء:", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("family_"))
-def handle_family_dua(call):
+def handle_family(call):
     category = call.data.replace("family_", "")
     send_family_dua(call.message.chat.id, category)
 
-
+# دعاء الاستعاذة للأطفال
 def send_kids_protection_dua(user_id):
-    dua_text = """
+    text = """
 👶 *دعاء الاستعاذة للأطفال:*
-
 أُعِيذُكُمَا بِكَلِمَاتِ اللَّهِ التَّامَّةِ  
 مِنْ كُلِّ شَيْطَانٍ وَهَامَّةٍ،  
 وَمِنْ كُلِّ عَيْنٍ لَامَّةٍ.
-
-📚 *الراوي:* عبد الله بن عباس رضي الله عنهما  
-📘 *المصدر:* صحيح البخاري (3120)
+📘 *المصدر:* صحيح البخاري
 """
-    bot.send_message(user_id, dua_text, parse_mode="Markdown")
-
+    bot.send_message(user_id, text, parse_mode="Markdown")
 
 @bot.message_handler(commands=['kids_dua'])
-def show_kids_dua(message):
+def kids_dua_command(message):
     send_kids_protection_dua(message.chat.id)
+    # تحديث مدينة المستخدم
+def update_user_city(user_id, city_name):
+    for user in users:
+        if isinstance(user, dict) and user["id"] == user_id:
+            user["city"] = city_name
+            with open("users.json", "w") as f:
+                json.dump(users, f, ensure_ascii=False, indent=2)
+            return True
+    return False
 
+# دالة جلب أوقات الصلاة من API
+def get_prayer_times(city):
+    try:
+        # إحداثيات المدينة
+        location_url = f"https://nominatim.openstreetmap.org/search?city={city}&format=json"
+        response = requests.get(location_url).json()
+        if not response:
+            return None
+        lat, lon = response[0]["lat"], response[0]["lon"]
+        # أوقات الصلاة
+        prayer_url = f"http://api.aladhan.com/v1/timings?latitude={lat}&longitude={lon}&method=2"
+        prayer_data = requests.get(prayer_url).json()
+        return prayer_data["data"]["timings"] if prayer_data["code"] == 200 else None
+    except:
+        return None
 
-from apscheduler.schedulers.background import BackgroundScheduler
+# أمر إدخال المدينة وحفظها
+@bot.message_handler(commands=['get_prayer_times'])
+def request_city(message):
+    msg = bot.send_message(message.chat.id, "من فضلك أدخل اسم مدينتك:")
+    bot.register_next_step_handler(msg, process_city_input)
 
-# تأكد من استيراد الوظيفة التي ترسل الدعاء:
-def send_kids_protection_dua(uid):
-    # من هنا سيقوم بإرسال الدعاء
-    print(f"Sending protection dua to {uid}")
+def process_city_input(message):
+    city = message.text.strip()
+    prayer_times = get_prayer_times(city)
+    if not prayer_times:
+        bot.send_message(message.chat.id, "تعذر جلب أوقات الصلاة. حاول مجددًا.")
+        return
+    update_user_city(message.chat.id, city)
+    show_prayer_times(message.chat.id, city, prayer_times)
 
-# إنشاء scheduler
-scheduler = BackgroundScheduler()
-
-# إضافة المهمة المجدولة
-scheduler.add_job(
-    lambda: [send_kids_protection_dua(uid) for uid in ALL_USERS_CHAT_IDS],
-    trigger='cron', hour=7, minute=30
-)
-
-# بدء الـ scheduler
-scheduler.start()
-# دعاء الاستعاذة بالأبناء – قبل المغرب (17:15)
-scheduler.add_job(
-    lambda: [send_kids_protection_dua(uid) for uid in ALL_USERS_CHAT_IDS],
-    trigger='cron', hour=17, minute=15
-)
-
-
-@bot.message_handler(commands=['dhikr'])
-def show_dhikr_counter_options(message):
+# زر تفاعلي يعرض أوقات الصلاة
+@bot.message_handler(commands=['get_prayer_times_button'])
+def show_prayer_button(message):
     markup = types.InlineKeyboardMarkup()
-    markup.add(
-        types.InlineKeyboardButton("3 مرات", callback_data="dhikr_3"),
-        types.InlineKeyboardButton("10 مرات", callback_data="dhikr_10"),
-        types.InlineKeyboardButton("33 مرة", callback_data="dhikr_33"),
-        types.InlineKeyboardButton("100 مرة", callback_data="dhikr_100")
-    )
-    bot.send_message(message.chat.id, "اختر عدد التكرارات للذكر:", reply_markup=markup)
+    markup.add(types.InlineKeyboardButton("عرض أوقات الصلاة", callback_data="show_prayers"))
+    bot.send_message(message.chat.id, "اضغط الزر لعرض أوقات الصلاة:", reply_markup=markup)
 
-
-user_dhikr_state = {}
-
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith("dhikr_"))
-def start_dhikr_tracking(call):
-    count = int(call.data.replace("dhikr_", ""))
-    user_dhikr_state[call.from_user.id] = {"target": count, "current": 0}
-
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("اذكر الآن", callback_data="dhikr_click"))
-    bot.send_message(call.message.chat.id, f"اذكر الآن – {count} مرة\n\nاضغط على الزر مع كل تسبيحة.", reply_markup=markup)
-
-
-@bot.callback_query_handler(func=lambda call: call.data == "dhikr_click")
-def handle_dhikr_click(call):
-    user_id = call.from_user.id
-    if user_id in user_dhikr_state:
-        state = user_dhikr_state[user_id]
-        state["current"] += 1
-
-        if state["current"] >= state["target"]:
-            bot.answer_callback_query(call.id, text="اكتمل الذكر! ما شاء الله.")
-            bot.send_message(call.message.chat.id, "✅ تم الذكر بنجاح. أسأل الله أن يتقبل منك.")
-            del user_dhikr_state[user_id]
+@bot.callback_query_handler(func=lambda call: call.data == "show_prayers")
+def show_user_prayers(call):
+    user_id = call.message.chat.id
+    user_city = next((u["city"] for u in users if u["id"] == user_id and isinstance(u, dict)), None)
+    if user_city and user_city != "غير محددة":
+        times = get_prayer_times(user_city)
+        if times:
+            show_prayer_times(user_id, user_city, times)
         else:
-            bot.answer_callback_query(call.id, text=f"عدّد الذكر: {state['current']} / {state['target']}")
+            bot.send_message(user_id, "تعذر جلب أوقات الصلاة.")
     else:
-        bot.answer_callback_query(call.id, text="ابدأ من /dhikr لاختيار العدد.")
+        bot.send_message(user_id, "لم يتم تحديد مدينتك بعد. أرسل /get_prayer_times لتحديدها.")
 
+# عرض أوقات الصلاة برسالة جميلة
+def show_prayer_times(user_id, city, times):
+    response = f"📍 *أوقات الصلاة في {city.title()}*\n"
+    response += f"• الفجر: {times['Fajr']}\n"
+    response += f"• الشروق: {times['Sunrise']}\n"
+    response += f"• الظهر: {times['Dhuhr']}\n"
+    response += f"• العصر: {times['Asr']}\n"
+    response += f"• المغرب: {times['Maghrib']}\n"
+    response += f"• العشاء: {times['Isha']}\n"
+    bot.send_message(user_id, response, parse_mode="Markdown")
 
-random_duas = [
-    "اللهم أعني على ذكرك وشكرك وحسن عبادتك.",
-    "اللهم ارزقني رزقًا طيبًا واسعًا مباركًا.",
-    "اللهم فرّج همّي ويسّر أمري واشرح صدري.",
-    "اللهم اجعلني من التوابين واجعلني من المتطهرين.",
-    "اللهم اجعل لي من كل همٍ فرجًا ومن كل ضيقٍ مخرجًا.",
-    "اللهم اجعل عملي خالصًا لوجهك الكريم.",
-    "اللهم ارزقني توبةً نصوحًا قبل الموت.",
-    "اللهم اغفر لي ولوالدي وللمؤمنين يوم يقوم الحساب.",
-    "اللهم يا مُقلّب القلوب ثبّت قلبي على دينك.",
-    "اللهم إنك عفوٌ تحب العفو فاعفُ عني."
-]
+# تذكير أذكار الضحى (يُرسل بعد الشروق بـ20 دقيقة تقريبًا)
+def send_duha_reminder():
+    for u in users:
+        if isinstance(u, dict):
+            city = u.get("city", "مكة")
+            times = get_prayer_times(city)
+            if times:
+                shurooq = times['Sunrise']
+                hour, minute = map(int, shurooq.split(":"))
+                duha_time = datetime.now().replace(hour=hour, minute=minute) + timedelta(minutes=20)
+                if datetime.now().hour == duha_time.hour and datetime.now().minute == duha_time.minute:
+                    bot.send_message(u["id"], "☀️ لا تنسَ صلاة الضحى، أجرها عظيم.")
 
+# تذكير الاستعاذة بالأبناء (قبل المغرب بـ15 دقيقة تقريبًا)
+def send_kids_protection_reminder():
+    for u in users:
+        if isinstance(u, dict):
+            city = u.get("city", "مكة")
+            times = get_prayer_times(city)
+            if times:
+                maghrib = times['Maghrib']
+                hour, minute = map(int, maghrib.split(":"))
+                reminder_time = datetime.now().replace(hour=hour, minute=minute) - timedelta(minutes=15)
+                if datetime.now().hour == reminder_time.hour and datetime.now().minute == reminder_time.minute:
+                    send_kids_protection_dua(u["id"])
 
-@bot.message_handler(commands=['dua'])
-def send_random_dua(message):
-    dua = random.choice(random_duas)
-    bot.send_message(message.chat.id, f"📿 *دعاء اليوم:*\n\n{dua}", parse_mode="Markdown")
+# جدولة التذكيرات اليومية الذكية
+scheduler.add_job(send_duha_reminder, 'cron', minute='*/1')  # مؤقت لتجريب التشغيل
+scheduler.add_job(send_kids_protection_reminder, 'cron', minute='*/1')  # نفس الشي
 
-
-@bot.message_handler(commands=['share'])
-def share_reward(message):
-    bot.send_message(
-        message.chat.id,
-        "🔗 *شارك الأجر مع أصدقائك:*\n\n"
-        "أرسل هذا الرابط لأي شخص ليبدأ رحلته مع الأذكار والدعاء:\n"
-        "https://t.me/ZadJannah_Bot\n\n"
-        "كل من استفاد بسببك، فلك مثل أجره بإذن الله.",
-        parse_mode="Markdown"
-    )
-
-
-def send_witr_dua(user_id):
-    witr_dua = """
-🌙 *دعاء الوتر*:
-
-اللهم إنا نرغب إليك في دعاء الوتر:
-
-اللهم إني أعوذ برضاك من سخطك، وبمعافاتك من عقوبتك، وأعوذ بك منك، لا نحصي ثناءً عليك، أنت كما أثنيت على نفسك.
-
-📚 *المصدر:* الحديث النبوي الصحيح.
-    """
-    bot.send_message(user_id, witr_dua, parse_mode="Markdown")
-
-
-@bot.message_handler(commands=['witr'])
-def send_witr_message(message):
-    markup = types.InlineKeyboardMarkup()
-    markup.add(
-        types.InlineKeyboardButton("دعاء الوتر", callback_data="witr_dua")
-    )
-    bot.send_message(
-        message.chat.id,
-        "🌙 *صلاة الوتر* – ختام صلاتك ليلًا.\n\n"
-        "أضف دعاء الوتر الآن!",
-        reply_markup=markup
-    )
-
-
-@bot.callback_query_handler(func=lambda call: call.data == "witr_dua")
-def handle_witr_dua(call):
-    send_witr_dua(call.message.chat.id)
+# Webhook والتشغيل
+@app.route("/", methods=["POST"])
+def webhook():
+    if request.headers.get("content-type") == "application/json":
+        update = telebot.types.Update.de_json(request.data.decode("utf-8"))
+        bot.process_new_updates([update])
+        return "", 200
+    return "Invalid", 403
 
 if __name__ == "__main__":
     bot.remove_webhook()
     bot.set_webhook(url="https://zadjannahbot.onrender.com/")
+    scheduler.start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    markup = types.InlineKeyboardMarkup(row_width=2)
+markup.add(
+    types.InlineKeyboardButton("أذكار الصباح", callback_data="azkar_morning"),
+    types.InlineKeyboardButton("أذكار المساء", callback_data="azkar_evening"),
+    types.InlineKeyboardButton("دعاء الوالدين", callback_data="parents_dua"),
+    types.InlineKeyboardButton("دعاء العائلة", callback_data="family_dua"),
+    types.InlineKeyboardButton("دعاء النوم", callback_data="sleep_dua"),
+    types.InlineKeyboardButton("دعاء الوتر", callback_data="witr_dua"),
+)
+bot.send_message(chat_id, "اختر من القائمة:", reply_markup=markup)
+@bot.message_handler(commands=['azkar'])
+def show_azkar_options(message):
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("☀️ أذكار الصباح", callback_data="azkar_morning_full"),
+        types.InlineKeyboardButton("🌙 أذكار المساء", callback_data="azkar_evening_full"),
+        types.InlineKeyboardButton("🛌 أذكار النوم", callback_data="sleep_full"),
+        types.InlineKeyboardButton("🕌 بعد الصلاة", callback_data="salat_full")
+    )
+    bot.send_message(message.chat.id, "اختر نوع الأذكار:", reply_markup=markup)
+
+@bot.message_handler(commands=['dua'])
+def show_dua_menu(message):
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("📿 دعاء اليوم", callback_data="random_dua"),
+        types.InlineKeyboardButton("❤️ دعاء الوالدين", callback_data="parents_dua"),
+        types.InlineKeyboardButton("👨‍👩‍👧‍👦 دعاء العائلة", callback_data="family_family"),
+        types.InlineKeyboardButton("👶 دعاء للأطفال", callback_data="kids_dua"),
+        types.InlineKeyboardButton("🌙 دعاء الوتر", callback_data="witr_dua"),
+        types.InlineKeyboardButton("📖 دعاء الأنبياء", callback_data="prophet_dua")
+    )
+    bot.send_message(message.chat.id, "اختر نوع الدعاء الذي تريده:", reply_markup=markup)
+
+@bot.message_handler(commands=['dhikr'])
+def show_dhikr_counter(message):
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("✨ 3 مرات", callback_data="dhikr_3"),
+        types.InlineKeyboardButton("✨ 10 مرات", callback_data="dhikr_10"),
+        types.InlineKeyboardButton("✨ 33 مرة", callback_data="dhikr_33"),
+        types.InlineKeyboardButton("✨ 100 مرة", callback_data="dhikr_100")
+    )
+    bot.send_message(message.chat.id, "اختر عدد تكرارات الذكر:", reply_markup=markup)
+
+@bot.message_handler(commands=['sunnah_fasting'])
+def show_sunnah_fasting(message):
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("🟣 الاثنين والخميس", callback_data="fast_mon_thu"),
+        types.InlineKeyboardButton("⚪️ أيام البيض", callback_data="fast_white_days"),
+        types.InlineKeyboardButton("🟡 يوم عرفة", callback_data="fast_arafah"),
+        types.InlineKeyboardButton("🟠 يوم عاشوراء", callback_data="fast_ashura")
+    )
+    bot.send_message(message.chat.id, "اختر نوع الصيام للاطلاع على فضله:", reply_markup=markup)
+
+scheduler.add_job(lambda: send_daily_dhikr("استغفر الله العظيم وأتوب إليه"), 'cron', hour='6,11,15,21')
+scheduler.add_job(lambda: send_daily_dhikr("سبحان الله، الحمد لله، لا إله إلا الله، الله أكبر"), 'cron', hour='7,12,16,22')
+scheduler.add_job(lambda: send_daily_dhikr("لا حول ولا قوة إلا بالله"), 'cron', hour='9,13,17,23')
+
+def send_daily_dhikr(phrase):
+    for u in users:
+        if isinstance(u, dict):
+            bot.send_message(u["id"], f"📿 {phrase}")
+
+scheduler.add_job(lambda: send_salawat(), 'cron', hour='7,10,14,18,22')
+
+def send_salawat():
+    for u in users:
+        if isinstance(u, dict):
+            bot.send_message(u["id"], "اللهم صلِّ على محمد وعلى آل محمد كما صليت على إبراهيم...")
+
+# كل ساعة يوم الجمعة
+scheduler.add_job(lambda: send_salawat(), 'cron', day_of_week='fri', minute=0)
+
+scheduler.add_job(lambda: send_kahf_reminder(), 'cron', day_of_week='fri', hour=6)
+scheduler.add_job(lambda: send_last_hour_dua(), 'cron', day_of_week='fri', hour=17)
+
+def send_kahf_reminder():
+    for u in users:
+        if isinstance(u, dict):
+            bot.send_message(u["id"], "📖 لا تنسَ قراءة *سورة الكهف* اليوم.")
+
+def send_last_hour_dua():
+    for u in users:
+        if isinstance(u, dict):
+            bot.send_message(u["id"], "⏰ *الآن آخر ساعة من يوم الجمعة*، الدعاء فيها لا يُرد.")
+
