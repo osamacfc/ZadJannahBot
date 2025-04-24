@@ -104,8 +104,21 @@ def schedule_tasks():
 
     # قيام ليلة الخميس
     scheduler.add_job(
-        lambda: send_message("✨ هل اجتهدت في قيام الليل؟ ليلة الخميس من الليالي المباركة."),
-        trigger='cron', day_of_week='thu', hour=4, minute=45
+        lambda: send_message("🕯️ لا تنسَ قيام الليل ليلة الخميس!"),
+        trigger='cron', hour=1, minute=0
     )
 
-    scheduler.start()
+# بدء الجدولة
+schedule_tasks()
+scheduler.start()
+
+# بدء البوت
+def run_bot():
+    while True:
+        try:
+            bot.polling(none_stop=True)
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            time.sleep(15)
+
+run_bot()
