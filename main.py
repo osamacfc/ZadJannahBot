@@ -64,6 +64,47 @@ def send_welcome(message):
         parse_mode="Markdown"
     )
 
+@bot.message_handler(commands=['admin'])
+def show_admin_entry(message):
+    if message.chat.id != ADMIN_ID:
+        return
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("📊 فتح لوحة المشرف", callback_data="open_admin_panel"))
+    bot.send_message(message.chat.id, "مرحبًا بك يا مشرف البوت.\nاضغط الزر لفتح لوحة التحكم.", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == "open_admin_panel")
+def open_admin_panel(call):
+    if call.message.chat.id != ADMIN_ID:
+        return
+
+    # تحميل المستخدمين
+    try:
+        with open("users.json", "r") as f:
+            users = json.load(f)
+        total_users = len(users)
+    except:
+        total_users = "؟"
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    response = f"""🔐 *لوحة تحكم المشرف*  
+أهلًا بك مشرفي العزيز.  
+• عدد المستخدمين الكلي: {total_users}  
+• تاريخ التشغيل: `{now}`  
+• ملاحظات: فقط أنت تملك صلاحية التحكم الكامل.
+
+اختر إجراء من الأزرار أدناه:
+"""
+
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("👥 عدد المستخدمين", callback_data="admin_users"),
+        types.InlineKeyboardButton("🟢 المتصلون الآن", callback_data="admin_active"),
+        types.InlineKeyboardButton("📢 إرسال رسالة", callback_data="admin_broadcast"),
+        types.InlineKeyboardButton("🚨 تنبيه عاجل", callback_data="admin_alert")
+    )
+    bot.edit_message_text(response, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
+    
 # أذكار الصباح والمساء
 def send_short_morning_azkar(user_id):
     text = "☀️ *أذكار الصباح – مختصرة:*\n1. آية الكرسي\n2. الإخلاص\n3. الفلق\n4. الناس"
