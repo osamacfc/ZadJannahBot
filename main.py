@@ -134,7 +134,7 @@ def run_bot():
             logging.error(f"Error occurred: {e}")
             time.sleep(15)
 
-run_bot()
+
 # زر عرض أوقات الصلاة
 @bot.message_handler(commands=["get_prayer_times_button"])
 def show_prayer_times_button(message):
@@ -713,5 +713,6 @@ def send_witr_message(message):
 @bot.callback_query_handler(func=lambda call: call.data == "witr_dua")
 def handle_witr_dua(call):
     send_witr_dua(call.message.chat.id)
+    
     if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
