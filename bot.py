@@ -1,19 +1,57 @@
 import os
-import time
 import logging
 import telebot
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
 from pytz import timezone
-import requests
+from flask import Flask, request
 from telebot import types
 
+# إعدادات البوت
 TOKEN = os.getenv("TOKEN")
 bot = telebot.TeleBot(TOKEN)
+WEBHOOK_URL = "https://zadjannahbot.onrender.com/"
 
-# حذف الـ Webhook
-bot.delete_webhook()
+# حذف وتعيين Webhook
+bot.remove_webhook()
+bot.set_webhook(url=WEBHOOK_URL)
 
+# إنشاء تطبيق Flask
+app = Flask(__name__)
+
+# إعداد الجدولة
+scheduler = BackgroundScheduler(timezone=timezone("Asia/Riyadh"))
+scheduler.start()
+
+# تخزين تفاعلات المستخدمين
+user_interactions = {}
+
+# أمر /start – تسجيل المستخدم + رسالة ترحيب
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    user_id = message.chat.id
+    if user_id not in user_interactions:
+        user_interactions[user_id] = {"joined": True}
+    bot.reply_to(message, "مرحبًا بك في ZadJannahBot! جعله الله زادًا لك إلى الجنة.")
+
+# وظيفة تذكير بالأذكار يوميًا
+def daily_reminder():
+    for user_id in user_interactions:
+        bot.send_message(user_id, "تذكير: لا تنسَ أذكار الصباح والمساء.")
+
+# إضافة مهمة يومية بالجدولة (ساعة 6:30 صباحًا)
+scheduler.add_job(daily_reminder, trigger='cron', hour=6, minute=30)
+
+# استقبال التحديثات من Telegram عبر Webhook
+@app.route('/', methods=['POST'])
+def webhook():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return '', 200
+    else:
+        return 'Invalid request', 403
 # إعدادات الجدولة
 scheduler = BackgroundScheduler(timezone=timezone("Asia/Riyadh"))
 
