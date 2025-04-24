@@ -296,6 +296,65 @@ def show_prayer_button(message):
     markup.add(types.InlineKeyboardButton("عرض أوقات الصلاة", callback_data="show_prayers"))
     bot.send_message(message.chat.id, "اضغط الزر لعرض أوقات الصلاة:", reply_markup=markup)
 
+import requests
+
+# المدن المخصصة بإحداثيات ثابتة
+city_coords = {
+    "الداير بني مالك": (17.30, 43.15),
+    "فيفا": (17.25, 43.12),
+    "العيدابي": (17.38, 42.99),
+    "المدينة المنورة": (24.47, 39.61),
+    "الرياض": (24.7136, 46.6753),
+    "أبو ظبي": (24.4539, 54.3773),
+    "الدوحة": (25.276987, 51.520008),
+    "المنامة": (26.2235, 50.5822),
+    "الكويت": (29.3759, 47.9774),
+    "مسقط": (23.5880, 58.3829),
+    "جدة": (21.4858, 39.1925),
+    "مكة": (21.3891, 39.8579),
+    "الشرقية": (26.4207, 50.0888)
+}
+
+# دالة جلب أوقات الصلاة بدقة عالية
+def get_prayer_times(city):
+    try:
+        if city in city_coords:
+            lat, lon = city_coords[city]
+        else:
+            location_url = f"https://nominatim.openstreetmap.org/search?city={city}&format=json"
+            response = requests.get(location_url)
+            location_data = response.json()
+            if not location_data:
+                return None
+            lat = location_data[0].get("lat")
+            lon = location_data[0].get("lon")
+            if not lat or not lon:
+                return None
+
+        prayer_url = f"http://api.aladhan.com/v1/timings?latitude={lat}&longitude={lon}&method=2"
+        prayer_response = requests.get(prayer_url)
+        prayer_data = prayer_response.json()
+
+        if prayer_data["code"] == 200:
+            return prayer_data["data"]["timings"]
+        else:
+            return None
+    except Exception as e:
+        print("خطأ أثناء جلب أوقات الصلاة:", e)
+        return None
+
+# عرض أوقات الصلاة للمستخدم
+def show_prayer_times(user_id, city, times):
+    response = f"📍 *أوقات الصلاة في {city.title()}*\n"
+    response += f"• الفجر: {times['Fajr']}\n"
+    response += f"• الشروق: {times['Sunrise']}\n"
+    response += f"• الظهر: {times['Dhuhr']}\n"
+    response += f"• العصر: {times['Asr']}\n"
+    response += f"• المغرب: {times['Maghrib']}\n"
+    response += f"• العشاء: {times['Isha']}\n"
+    bot.send_message(user_id, response, parse_mode="Markdown")
+
+# استدعاء الأوقات عبر الزر التفاعلي
 @bot.callback_query_handler(func=lambda call: call.data == "show_prayers")
 def show_user_prayers(call):
     user_id = call.message.chat.id
@@ -308,44 +367,39 @@ def show_user_prayers(call):
             bot.send_message(user_id, "تعذر جلب أوقات الصلاة.")
     else:
         bot.send_message(user_id, "لم يتم تحديد مدينتك بعد. أرسل /get_prayer_times لتحديدها.")
-
-# عرض أوقات الصلاة برسالة جميلة
-def show_prayer_times(user_id, city, times):
-    response = f"📍 *أوقات الصلاة في {city.title()}*\n"
-    response += f"• الفجر: {times['Fajr']}\n"
-    response += f"• الشروق: {times['Sunrise']}\n"
-    response += f"• الظهر: {times['Dhuhr']}\n"
-    response += f"• العصر: {times['Asr']}\n"
-    response += f"• المغرب: {times['Maghrib']}\n"
-    response += f"• العشاء: {times['Isha']}\n"
-    bot.send_message(user_id, response, parse_mode="Markdown")
-
-# تذكير أذكار الضحى (يُرسل بعد الشروق بـ20 دقيقة تقريبًا)
+        
+    # تذكير أذكار الضحى (يُرسل بعد الشروق بـ20 دقيقة تقريبًا)
 def send_duha_reminder():
     for u in users:
         if isinstance(u, dict):
-            city = u.get("city", "مكة")
+            city = u.get("city")
+            if not city or city == "غير محددة":
+                continue
             times = get_prayer_times(city)
             if times:
                 shurooq = times['Sunrise']
                 hour, minute = map(int, shurooq.split(":"))
                 duha_time = datetime.now().replace(hour=hour, minute=minute) + timedelta(minutes=20)
-                if datetime.now().hour == duha_time.hour and datetime.now().minute == duha_time.minute:
+                now = datetime.now().replace(second=0, microsecond=0)
+                if now.hour == duha_time.hour and now.minute == duha_time.minute:
                     bot.send_message(u["id"], "☀️ لا تنسَ صلاة الضحى، أجرها عظيم.")
 
 # تذكير الاستعاذة بالأبناء (قبل المغرب بـ15 دقيقة تقريبًا)
 def send_kids_protection_reminder():
     for u in users:
         if isinstance(u, dict):
-            city = u.get("city", "مكة")
+            city = u.get("city")
+            if not city or city == "غير محددة":
+                continue
             times = get_prayer_times(city)
             if times:
                 maghrib = times['Maghrib']
                 hour, minute = map(int, maghrib.split(":"))
                 reminder_time = datetime.now().replace(hour=hour, minute=minute) - timedelta(minutes=15)
-                if datetime.now().hour == reminder_time.hour and datetime.now().minute == reminder_time.minute:
+                now = datetime.now().replace(second=0, microsecond=0)
+                if now.hour == reminder_time.hour and now.minute == reminder_time.minute:
                     send_kids_protection_dua(u["id"])
-
+                    
 # جدولة التذكيرات اليومية الذكية
 scheduler.add_job(send_duha_reminder, 'cron', minute='*/1')  # مؤقت لتجريب التشغيل
 scheduler.add_job(send_kids_protection_reminder, 'cron', minute='*/1')  # نفس الشي
