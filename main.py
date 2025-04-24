@@ -733,8 +733,8 @@ def send_witr_message(message):
 @bot.callback_query_handler(func=lambda call: call.data == "witr_dua")
 def handle_witr_dua(call):
     send_witr_dua(call.message.chat.id)
-    
- if __name__ == "__main__":
+
+if __name__ == "__main__":
     bot.remove_webhook()
     bot.set_webhook(url="https://zadjannahbot.onrender.com/")
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
