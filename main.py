@@ -354,6 +354,55 @@ def show_prayer_times(user_id, city, times):
     response += f"• العشاء: {times['Isha']}\n"
     bot.send_message(user_id, response, parse_mode="Markdown")
 
+def get_next_prayer_time(prayer_times):
+    now = datetime.now().replace(second=0, microsecond=0)
+    for name in ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"]:
+        time_str = prayer_times.get(name)
+        if not time_str:
+            continue
+        hour, minute = map(int, time_str.split(":"))
+        prayer_time = now.replace(hour=hour, minute=minute)
+        if prayer_time > now:
+            arabic_names = {
+                "Fajr": "الفجر",
+                "Sunrise": "الشروق",
+                "Dhuhr": "الظهر",
+                "Asr": "العصر",
+                "Maghrib": "المغرب",
+                "Isha": "العشاء"
+            }
+            remaining = prayer_time - now
+            hours, remainder = divmod(remaining.seconds, 3600)
+            minutes, _ = divmod(remainder, 60)
+
+            if hours > 0:
+                formatted = f"{hours} ساعة و{minutes} دقيقة"
+            else:
+                formatted = f"{minutes} دقيقة فقط"
+
+            response = f"⏰ *الصلاة القادمة: {arabic_names[name]}*\n"
+            response += f"• الوقت: {time_str}\n"
+            response += f"• المتبقي: {formatted}"
+            return response
+    return "⏰ *الصلاة القادمة: الفجر*\n• الوقت: {prayer_times['Fajr']}\n• المتبقي: بداية اليوم الجديد"
+
+@bot.message_handler(commands=['next_salah'])
+def send_next_salah(message):
+    user_id = message.chat.id
+    user_city = next((u["city"] for u in users if u["id"] == user_id and isinstance(u, dict)), None)
+
+    if not user_city or user_city == "غير محددة":
+        bot.send_message(user_id, "من فضلك حدّد مدينتك أولاً باستخدام /get_prayer_times")
+        return
+
+    times = get_prayer_times(user_city)
+    if times:
+        response = get_next_prayer_time(times)
+        bot.send_message(user_id, response, parse_mode="Markdown")
+    else:
+        bot.send_message(user_id, "تعذر جلب أوقات الصلاة حاليًا.")
+
+
 # استدعاء الأوقات عبر الزر التفاعلي
 @bot.callback_query_handler(func=lambda call: call.data == "show_prayers")
 def show_user_prayers(call):
