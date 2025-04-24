@@ -356,6 +356,25 @@ def show_prayer_times(user_id, city, times):
 
 def get_next_prayer_time(prayer_times):
     now = datetime.now().replace(second=0, microsecond=0)
+
+    arabic_names = {
+        "Fajr": "الفجر",
+        "Sunrise": "الشروق",
+        "Dhuhr": "الظهر",
+        "Asr": "العصر",
+        "Maghrib": "المغرب",
+        "Isha": "العشاء"
+    }
+
+    suggestions = {
+        "Fajr": "✨ لا تنسَ سنة الفجر، خيرٌ من الدنيا وما فيها.",
+        "Sunrise": "☀️ وقت الضحى قد اقترب، صلاة الضحى كنز لا يفوّت.",
+        "Dhuhr": "🕌 صلِّ الظهر بخشوع، فإنه أول صلاة أُقيمت في الإسلام.",
+        "Asr": "⛅️ حافظ على العصر، فهي الصلاة الوسطى التي عظّمها الله.",
+        "Maghrib": "🌇 لا تنسَ سنة المغرب، والدعاء في هذا الوقت مستجاب.",
+        "Isha": "🌌 صلاة العشاء نور في القلب والوجه."
+    }
+
     for name in ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"]:
         time_str = prayer_times.get(name)
         if not time_str:
@@ -363,14 +382,6 @@ def get_next_prayer_time(prayer_times):
         hour, minute = map(int, time_str.split(":"))
         prayer_time = now.replace(hour=hour, minute=minute)
         if prayer_time > now:
-            arabic_names = {
-                "Fajr": "الفجر",
-                "Sunrise": "الشروق",
-                "Dhuhr": "الظهر",
-                "Asr": "العصر",
-                "Maghrib": "المغرب",
-                "Isha": "العشاء"
-            }
             remaining = prayer_time - now
             hours, remainder = divmod(remaining.seconds, 3600)
             minutes, _ = divmod(remainder, 60)
@@ -382,13 +393,23 @@ def get_next_prayer_time(prayer_times):
 
             response = f"⏰ *الصلاة القادمة: {arabic_names[name]}*\n"
             response += f"• الوقت: {time_str}\n"
-            response += f"• المتبقي: {formatted}"
-            return response
-    return "⏰ *الصلاة القادمة: الفجر*\n• الوقت: {prayer_times['Fajr']}\n• المتبقي: بداية اليوم الجديد"
+            response += f"• المتبقي: {formatted}\n"
+            response += f"• التوصية: {suggestions[name]}"
+            return response, name
+
+    fajr_time = prayer_times.get("Fajr", "00:00")
+    return f"⏰ *الصلاة القادمة: الفجر*\n• الوقت: {fajr_time}\n• المتبقي: بداية اليوم الجديد", "Fajr"
 
 @bot.message_handler(commands=['next_salah'])
 def send_next_salah(message):
     user_id = message.chat.id
+
+    try:
+        with open("users.json", "r") as f:
+            users = json.load(f)
+    except:
+        users = []
+
     user_city = next((u["city"] for u in users if u["id"] == user_id and isinstance(u, dict)), None)
 
     if not user_city or user_city == "غير محددة":
@@ -397,11 +418,33 @@ def send_next_salah(message):
 
     times = get_prayer_times(user_city)
     if times:
-        response = get_next_prayer_time(times)
-        bot.send_message(user_id, response, parse_mode="Markdown")
+        response, prayer_key = get_next_prayer_time(times)
+
+        markup = types.InlineKeyboardMarkup()
+        if prayer_key == "Fajr":
+            markup.add(types.InlineKeyboardButton("🌅 دعاء الاستيقاظ", callback_data="dua_wakeup"))
+        elif prayer_key == "Maghrib":
+            markup.add(types.InlineKeyboardButton("🌇 دعاء بين الأذان والإقامة", callback_data="dua_adhan"))
+        elif prayer_key == "Isha":
+            markup.add(types.InlineKeyboardButton("🌙 دعاء الوتر", callback_data="witr_dua"))
+        else:
+            markup.add(types.InlineKeyboardButton("📿 سنة أو دعاء", callback_data="general_sunnah"))
+
+        bot.send_message(user_id, response, parse_mode="Markdown", reply_markup=markup)
     else:
         bot.send_message(user_id, "تعذر جلب أوقات الصلاة حاليًا.")
 
+@bot.callback_query_handler(func=lambda call: call.data == "dua_wakeup")
+def send_wakeup_dua(call):
+    bot.send_message(call.message.chat.id, "🌅 *دعاء الاستيقاظ:*\nالحمد لله الذي أحيانا بعدما أماتنا وإليه النشور.", parse_mode="Markdown")
+
+@bot.callback_query_handler(func=lambda call: call.data == "dua_adhan")
+def send_between_adhan_dua(call):
+    bot.send_message(call.message.chat.id, "🌇 *الدعاء بين الأذان والإقامة لا يُرد.*\nارفع يديك الآن واسأل الله من فضله.", parse_mode="Markdown")
+
+@bot.callback_query_handler(func=lambda call: call.data == "general_sunnah")
+def send_general_sunnah(call):
+    bot.send_message(call.message.chat.id, "📿 *سنة نبوية اليوم:*\nصلِّ ركعتين قبل الظهر أو أكثر، فهي من أحب الأعمال إلى الله.", parse_mode="Markdown")
 
 # استدعاء الأوقات عبر الزر التفاعلي
 @bot.callback_query_handler(func=lambda call: call.data == "show_prayers")
