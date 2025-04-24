@@ -558,12 +558,24 @@ def show_kids_dua(message):
     send_kids_protection_dua(message.chat.id)
 
 
-# دعاء الاستعاذة بالأبناء – صباحًا (7:30)
+from apscheduler.schedulers.background import BackgroundScheduler
+
+# تأكد من استيراد الوظيفة التي ترسل الدعاء:
+def send_kids_protection_dua(uid):
+    # من هنا سيقوم بإرسال الدعاء
+    print(f"Sending protection dua to {uid}")
+
+# إنشاء scheduler
+scheduler = BackgroundScheduler()
+
+# إضافة المهمة المجدولة
 scheduler.add_job(
     lambda: [send_kids_protection_dua(uid) for uid in ALL_USERS_CHAT_IDS],
     trigger='cron', hour=7, minute=30
 )
 
+# بدء الـ scheduler
+scheduler.start()
 # دعاء الاستعاذة بالأبناء – قبل المغرب (17:15)
 scheduler.add_job(
     lambda: [send_kids_protection_dua(uid) for uid in ALL_USERS_CHAT_IDS],
