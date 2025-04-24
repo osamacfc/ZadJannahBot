@@ -123,18 +123,38 @@ def get_prayer_times(city):
     return None
 
 # بدء الجدولة
-scheduler.start()
+from flask import Flask, request
 
-# تشغيل البوت
-def run_bot():
-    while True:
-        try:
-            bot.polling(none_stop=True)
-        except Exception as e:
-            logging.error(f"Error occurred: {e}")
-            time.sleep(15)
+app = Flask(__name__)
 
+@app.route("/", methods=["POST"])
+def webhook():
+    if request.headers.get("content-type") == "application/json":
+        json_string = request.get_data().decode("utf-8")
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return "", 200
+    else:
+        return "Invalid request", 403
 
+from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route("/", methods=["POST"])
+def webhook():
+    if request.headers.get("content-type") == "application/json":
+        json_string = request.get_data().decode("utf-8")
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return "", 200
+    else:
+        return "Invalid request", 403
+
+if __name__ == "__main__":
+    bot.remove_webhook()
+    bot.set_webhook(url="https://zadjannahbot.onrender.com/")
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
 # زر عرض أوقات الصلاة
 @bot.message_handler(commands=["get_prayer_times_button"])
 def show_prayer_times_button(message):
