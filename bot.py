@@ -25,6 +25,9 @@ user_interactions = {}
 def send_welcome(message):
     bot.reply_to(message, "مرحبًا بك في ZadJannahBot! جعله الله زادًا لك إلى الجنة.")
 
+# بدء الـ polling
+bot.polling(none_stop=True)
+
 # تذكير بالأذكار يومياً
 def daily_reminder():
     for user_id in user_interactions:
