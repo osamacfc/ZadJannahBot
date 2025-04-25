@@ -399,7 +399,8 @@ def show_prayer_times(user_id, city, times):
     bot.send_message(user_id, response, parse_mode="Markdown")
 
 def get_next_prayer_time(prayer_times):
-    now = datetime.now().replace(second=0, microsecond=0)
+    ksa = timezone('Asia/Riyadh')
+now = datetime.now(ksa).replace(second=0, microsecond=0)
 
     arabic_names = {
         "Fajr": "الفجر",
@@ -671,4 +672,14 @@ def send_last_hour_dua():
         if isinstance(u, dict):
             bot.send_message(u["id"], "⏰ *الآن آخر ساعة من يوم الجمعة*، الدعاء فيها لا يُرد.")
 
-app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+if __name__ == "__main__":
+    bot.remove_webhook()
+    bot.set_webhook(url="https://zadjannahbot.onrender.com/")
+    scheduler.start()
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
+    # إرسال رسالة تأكيد للمشرف بعد التشغيل
+    try:
+        bot.send_message(ADMIN_ID, "✅ تم تشغيل البوت بنجاح يا إدمن!")
+    except Exception as e:
+        print("فشل إرسال رسالة الإدمن:", e)
