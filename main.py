@@ -36,6 +36,9 @@ ADMIN_ID = 585555633
 TOKEN = os.getenv("TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
+# تعطيل Webhook إذا كان مفعلًا
+bot.remove_webhook()
+
 # Flask app
 app = Flask(__name__)
 
@@ -357,55 +360,20 @@ def send_kids_protection_dua(user_id):
 @bot.message_handler(commands=['kids_dua'])
 def kids_dua_command(message):
     send_kids_protection_dua(message.chat.id)
-    # تحديث مدينة المستخدم
-def update_user_city(user_id, city_name):
-    for user in users:
-        if isinstance(user, dict) and user["id"] == user_id:
-            user["city"] = city_name
-            with open("users.json", "w") as f:
-                json.dump(users, f, ensure_ascii=False, indent=2)
-            return True
-    return False
-
-# دالة جلب أوقات الصلاة من API
-def get_prayer_times(city):
-    try:
-        # إحداثيات المدينة
-        location_url = f"https://nominatim.openstreetmap.org/search?city={city}&format=json"
-        response = requests.get(location_url).json()
-        if not response:
-            return None
-        lat, lon = response[0]["lat"], response[0]["lon"]
-        # أوقات الصلاة
-        prayer_url = f"http://api.aladhan.com/v1/timings?latitude={lat}&longitude={lon}&method=2"
-        prayer_data = requests.get(prayer_url).json()
-        return prayer_data["data"]["timings"] if prayer_data["code"] == 200 else None
-    except:
-        return None
-
-# أمر إدخال المدينة وحفظها
-@bot.message_handler(commands=['get_prayer_times'])
-def request_city(message):
-    msg = bot.send_message(message.chat.id, "من فضلك أدخل اسم مدينتك:")
-    bot.register_next_step_handler(msg, process_city_input)
-
-def process_city_input(message):
-    city = message.text.strip()
-    prayer_times = get_prayer_times(city)
-    if not prayer_times:
-        bot.send_message(message.chat.id, "تعذر جلب أوقات الصلاة. حاول مجددًا.")
-        return
-    update_user_city(message.chat.id, city)
-    show_prayer_times(message.chat.id, city, prayer_times)
-
-# زر تفاعلي يعرض أوقات الصلاة
-@bot.message_handler(commands=['get_prayer_times_button'])
-def show_prayer_button(message):
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("عرض أوقات الصلاة", callback_data="show_prayers"))
-    bot.send_message(message.chat.id, "اضغط الزر لعرض أوقات الصلاة:", reply_markup=markup)
-
+    import os
+import telebot
 import requests
+import json
+from datetime import datetime, timedelta
+from pytz import timezone
+from telebot import types
+
+# رقم المشرف
+ADMIN_ID = 585555633
+
+# إعداد التوكن والبوت
+TOKEN = os.getenv("TOKEN")
+bot = telebot.TeleBot(TOKEN)
 
 # المدن المخصصة بإحداثيات ثابتة
 city_coords = {
@@ -424,7 +392,17 @@ city_coords = {
     "الشرقية": (26.4207, 50.0888)
 }
 
-# دالة جلب أوقات الصلاة بدقة عالية
+# تحديث مدينة المستخدم
+def update_user_city(user_id, city_name):
+    for user in users:
+        if isinstance(user, dict) and user["id"] == user_id:
+            user["city"] = city_name
+            with open("users.json", "w") as f:
+                json.dump(users, f, ensure_ascii=False, indent=2)
+            return True
+    return False
+
+# دالة جلب أوقات الصلاة من API
 def get_prayer_times(city):
     try:
         if city in city_coords:
@@ -463,6 +441,7 @@ def show_prayer_times(user_id, city, times):
     response += f"• العشاء: {times['Isha']}\n"
     bot.send_message(user_id, response, parse_mode="Markdown")
 
+# دالة جلب الصلاة القادمة
 def get_next_prayer_time(prayer_times):
     ksa = timezone('Asia/Riyadh')
     now = datetime.now(ksa).replace(second=0, microsecond=0)
@@ -509,6 +488,30 @@ def get_next_prayer_time(prayer_times):
 
     fajr_time = prayer_times.get("Fajr", "00:00")
     return f"⏰ *الصلاة القادمة: الفجر*\n• الوقت: {fajr_time}\n• المتبقي: بداية اليوم الجديد", "Fajr"
+
+# أمر إدخال المدينة وحفظها
+@bot.message_handler(commands=['get_prayer_times'])
+def request_city(message):
+    msg = bot.send_message(message.chat.id, "من فضلك أدخل اسم مدينتك:")
+    bot.register_next_step_handler(msg, process_city_input)
+
+def process_city_input(message):
+    city = message.text.strip()
+    prayer_times = get_prayer_times(city)
+    if not prayer_times:
+        bot.send_message(message.chat.id, "تعذر جلب أوقات الصلاة. حاول مجددًا.")
+        return
+    update_user_city(message.chat.id, city)
+    show_prayer_times(message.chat.id, city, prayer_times)
+
+# زر تفاعلي يعرض أوقات الصلاة
+@bot.message_handler(commands=['get_prayer_times_button'])
+def show_prayer_button(message):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("عرض أوقات الصلاة", callback_data="show_prayers"))
+    bot.send_message(message.chat.id, "اضغط الزر لعرض أوقات الصلاة:", reply_markup=markup)
+
+# أمر للصلاة القادمة
 @bot.message_handler(commands=['next_salah'])
 def send_next_salah(message):
     user_id = message.chat.id
@@ -541,38 +544,7 @@ def send_next_salah(message):
     else:
         bot.send_message(user_id, "تعذر جلب أوقات الصلاة حاليًا.")
 
-@bot.callback_query_handler(func=lambda call: call.data == "show_prayers")
-def handle_show_prayers_button(call):
-    user_id = call.message.chat.id
-    try:
-        with open("users.json", "r") as f:
-            users = json.load(f)
-    except:
-        users = []
-
-    user_city = next((u["city"] for u in users if u["id"] == user_id and isinstance(u, dict)), None)
-
-    if not user_city or user_city == "غير محددة":
-        bot.send_message(user_id, "من فضلك حدّد مدينتك أولاً باستخدام /get_prayer_times")
-        return
-
-    times = get_prayer_times(user_city)
-    if times:
-        response, prayer_key = get_next_prayer_time(times)
-        markup = types.InlineKeyboardMarkup()
-        if prayer_key == "Fajr":
-            markup.add(types.InlineKeyboardButton("🌅 دعاء الاستيقاظ", callback_data="dua_wakeup"))
-        elif prayer_key == "Maghrib":
-            markup.add(types.InlineKeyboardButton("🌇 دعاء بين الأذان والإقامة", callback_data="dua_adhan"))
-        elif prayer_key == "Isha":
-            markup.add(types.InlineKeyboardButton("🌙 دعاء الوتر", callback_data="witr_dua"))
-        else:
-            markup.add(types.InlineKeyboardButton("📿 سنة أو دعاء", callback_data="general_sunnah"))
-
-        bot.send_message(user_id, response, parse_mode="Markdown", reply_markup=markup)
-    else:
-        bot.send_message(user_id, "تعذر جلب أوقات الصلاة.")
-
+# إضافة باقي الوظائف الخاصة بالدعاء
 @bot.callback_query_handler(func=lambda call: call.data == "dua_wakeup")
 def send_wakeup_dua(call):
     bot.send_message(call.message.chat.id, "🌅 *دعاء الاستيقاظ:*\nالحمد لله الذي أحيانا بعدما أماتنا وإليه النشور.", parse_mode="Markdown")
@@ -584,6 +556,7 @@ def send_between_adhan_dua(call):
 @bot.callback_query_handler(func=lambda call: call.data == "general_sunnah")
 def send_general_sunnah(call):
     bot.send_message(call.message.chat.id, "📿 *سنة نبوية اليوم:*\nصلِّ ركعتين قبل الظهر أو أكثر، فهي من أحب الأعمال إلى الله.", parse_mode="Markdown")
+
 # استدعاء الأوقات عبر الزر التفاعلي
 @bot.callback_query_handler(func=lambda call: call.data == "show_prayers")
 def show_user_prayers(call):
@@ -598,7 +571,7 @@ def show_user_prayers(call):
     else:
         bot.send_message(user_id, "لم يتم تحديد مدينتك بعد. أرسل /get_prayer_times لتحديدها.")
         
-    # تذكير أذكار الضحى (يُرسل بعد الشروق بـ20 دقيقة تقريبًا)
+# تذكير أذكار الضحى (يُرسل بعد الشروق بـ20 دقيقة تقريبًا)
 def send_duha_reminder():
     for u in users:
         if isinstance(u, dict):
