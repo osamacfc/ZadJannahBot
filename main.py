@@ -33,7 +33,7 @@ from data import (
 ADMIN_ID = 585555633
 
 # إعداد التوكن والبوت
-TOKEN = os.getenv("TOKEN")
+TOKEN = '7800594975:AAFz7imbaTGAYvf-WhKxgIxBxrgpKEiIsVo'  # ضع التوكن الخاص بك هنا
 bot = telebot.TeleBot(TOKEN)
 
 # تعطيل Webhook إذا كان مفعلًا
@@ -57,22 +57,18 @@ user_interactions = {}
 
 @bot.message_handler(commands=['azkar_sabah'])
 def send_morning_azkar(message):
-    # إرسال أذكار الصباح كاملة أو مختصرة
     bot.send_message(message.chat.id, "\n".join(short_morning_azkar_full))
 
 @bot.message_handler(commands=['azkar_masaa'])
 def send_evening_azkar(message):
-    # إرسال أذكار المساء كاملة أو مختصرة
     bot.send_message(message.chat.id, full_evening_azkar_text)
 
 @bot.message_handler(commands=['salat_azkar'])
 def send_salat_azkar(message):
-    # إرسال أذكار بعد الصلاة
     bot.send_message(message.chat.id, "\n".join(salat_azkar))
 
 @bot.message_handler(commands=['parents_duas'])
 def send_parents_duas(message):
-    # إرسال دعاء الوالدين
     bot.send_message(message.chat.id, "\n".join(parents_duas))
 
 @bot.message_handler(commands=['menu'])
@@ -86,7 +82,6 @@ def send_welcome(message):
 
 @bot.message_handler(commands=['daily_verse'])
 def send_daily_verse(message):
-    # إرسال آية اليوم مع تفسيرها وفائدتها
     verse = daily_verses[0]  # يمكنك تعديل هذه لتكون عشوائية أو ديناميكية
     response = f"الآية: {verse['ayah']}\nالتفسير: {verse['tafseer']}\nالفائدة: {verse['faidah']}\nسبب النزول: {verse['sabab_nuzool']}\nالمصدر: {verse['source']}"
     bot.send_message(message.chat.id, response)
