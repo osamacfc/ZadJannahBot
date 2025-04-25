@@ -671,3 +671,4 @@ def send_last_hour_dua():
         if isinstance(u, dict):
             bot.send_message(u["id"], "⏰ *الآن آخر ساعة من يوم الجمعة*، الدعاء فيها لا يُرد.")
 
+app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
