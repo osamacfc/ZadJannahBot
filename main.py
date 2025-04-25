@@ -8,6 +8,26 @@ from pytz import timezone
 from apscheduler.schedulers.background import BackgroundScheduler
 import telebot
 from telebot import types
+from data import (
+    short_morning_azkar_full,
+    full_morning_azkar_list,
+    short_evening_azkar,
+    full_evening_azkar_text,
+    salat_azkar,
+    full_salat_azkar,
+    parents_duas,
+    children_protection_dua,
+    daily_deeds,
+    salihin_quotes,
+    daily_ahadith,
+    azkar_sleep,
+    names_of_allah,
+    baqiyat_salihah,
+    random_duas,
+    nabd_dua_list,
+    quran_parts,
+    daily_verses
+)
 
 # رقم المشرف
 ADMIN_ID = 585555633
@@ -31,6 +51,48 @@ except:
 
 ALL_USERS_CHAT_IDS = [u["id"] if isinstance(u, dict) else u for u in users]
 user_interactions = {}
+
+@bot.message_handler(commands=['azkar_sabah'])
+def send_morning_azkar(message):
+    # إرسال أذكار الصباح كاملة أو مختصرة
+    bot.send_message(message.chat.id, "\n".join(short_morning_azkar_full))
+
+@bot.message_handler(commands=['azkar_masaa'])
+def send_evening_azkar(message):
+    # إرسال أذكار المساء كاملة أو مختصرة
+    bot.send_message(message.chat.id, full_evening_azkar_text)
+
+@bot.message_handler(commands=['salat_azkar'])
+def send_salat_azkar(message):
+    # إرسال أذكار بعد الصلاة
+    bot.send_message(message.chat.id, "\n".join(salat_azkar))
+
+@bot.message_handler(commands=['parents_duas'])
+def send_parents_duas(message):
+    # إرسال دعاء الوالدين
+    bot.send_message(message.chat.id, "\n".join(parents_duas))
+
+@bot.message_handler(commands=['menu'])
+def send_welcome(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    button1 = types.KeyboardButton("أذكار الصباح")
+    button2 = types.KeyboardButton("أذكار المساء")
+    button3 = types.KeyboardButton("دعاء الوالدين")
+    markup.add(button1, button2, button3)
+    bot.send_message(message.chat.id, "مرحبًا، اختر نوع الأذكار أو الدعاء:", reply_markup=markup)
+
+@bot.message_handler(commands=['daily_verse'])
+def send_daily_verse(message):
+    # إرسال آية اليوم مع تفسيرها وفائدتها
+    verse = daily_verses[0]  # يمكنك تعديل هذه لتكون عشوائية أو ديناميكية
+    response = f"الآية: {verse['ayah']}\nالتفسير: {verse['tafseer']}\nالفائدة: {verse['faidah']}\nسبب النزول: {verse['sabab_nuzool']}\nالمصدر: {verse['source']}"
+    bot.send_message(message.chat.id, response)
+
+@bot.message_handler(commands=['random_dua'])
+def send_random_dua(message):
+    dua = random.choice(random_duas)  # اختيار دعاء عشوائي
+    bot.send_message(message.chat.id, dua)
+
 
 # دالة تسجيل المستخدم
 def register_user(user_id):
