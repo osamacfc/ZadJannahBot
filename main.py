@@ -93,6 +93,8 @@ def send_random_dua(message):
     dua = random.choice(random_duas)  # اختيار دعاء عشوائي
     bot.send_message(message.chat.id, dua)
 
+# تشغيل البوت
+bot.polling(none_stop=True)
 
 # دالة تسجيل المستخدم
 def register_user(user_id):
