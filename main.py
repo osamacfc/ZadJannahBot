@@ -182,7 +182,8 @@ def dhikr_click(call):
             del user_dhikr_state[user_id]
         else:
             bot.answer_callback_query(call.id, f"{state['current']} / {state['target']}")
-            # أذكار بعد الصلاة – مختصرة وكاملة
+
+# أذكار بعد الصلاة – مختصرة وكاملة
 def send_short_salat_azkar(user_id):
     text = """
 🕌 *أذكار بعد الصلاة – مختصرة:*
@@ -400,7 +401,7 @@ def show_prayer_times(user_id, city, times):
 
 def get_next_prayer_time(prayer_times):
     ksa = timezone('Asia/Riyadh')
-now = datetime.now(ksa).replace(second=0, microsecond=0)
+    now = datetime.now(ksa).replace(second=0, microsecond=0)
 
     arabic_names = {
         "Fajr": "الفجر",
@@ -430,13 +431,20 @@ now = datetime.now(ksa).replace(second=0, microsecond=0)
             remaining = prayer_time - now
             hours, remainder = divmod(remaining.seconds, 3600)
             minutes, _ = divmod(remainder, 60)
-            formatted = f"{hours} ساعة و{minutes} دقيقة" if hours > 0 else f"{minutes} دقيقة فقط"
-            response = f"⏰ *الصلاة القادمة: {arabic_names[name]}*\n• الوقت: {time_str}\n• المتبقي: {formatted}\n• التوصية: {suggestions[name]}"
+
+            if hours > 0:
+                formatted = f"{hours} ساعة و{minutes} دقيقة"
+            else:
+                formatted = f"{minutes} دقيقة فقط"
+
+            response = f"⏰ *الصلاة القادمة: {arabic_names[name]}*\n"
+            response += f"• الوقت: {time_str}\n"
+            response += f"• المتبقي: {formatted}\n"
+            response += f"• التوصية: {suggestions[name]}"
             return response, name
 
     fajr_time = prayer_times.get("Fajr", "00:00")
     return f"⏰ *الصلاة القادمة: الفجر*\n• الوقت: {fajr_time}\n• المتبقي: بداية اليوم الجديد", "Fajr"
-
 @bot.message_handler(commands=['next_salah'])
 def send_next_salah(message):
     user_id = message.chat.id
